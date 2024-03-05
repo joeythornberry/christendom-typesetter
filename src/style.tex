@@ -1,0 +1,58 @@
+ %paperstyle for cdom papers
+\documentclass[12pt]{article}
+
+\usepackage{xcolor}
+\colorlet{RED}{red}
+
+\usepackage{geometry}
+\geometry{margin=1in}
+
+\usepackage{setspace}
+
+\usepackage{fancyhdr}
+\pagestyle{fancy}
+\fancyhf{}
+\setlength{\headheight}{15pt}
+\renewcommand{\headrulewidth}{0pt}
+\fancypagestyle{firstpage} {% get rid of page number on first page
+	\fancyhf{}
+}
+\fancyhead[R]{\thepage}
+
+\setlength{\parindent}{3em}
+\setlength{\footnotesep}{12pt}
+
+\vspace{30px}
+
+\newcommand{\Q}[1]{
+	\vspace{-0.5\baselineskip}
+	\begin{singlespace}
+		{\noindent #1}
+	\end{singlespace}
+	\vspace{-0.5\baselineskip}
+}
+\newcommand{\q}[1]{``#1''}
+
+\def\b{%
+	\singlespacing%
+	\vskip\baselineskip%
+	\noindent%
+	\hangindent=1.5em%
+}
+
+\sfcode`\.=1000 % only one space after periods
+
+\usepackage{times}
+
+\begin{document}
+
+\thispagestyle{firstpage}
+
+\begin{singlespace}
+	\input{metadata.tex}
+\end{singlespace}
+
+\doublespacing
+\input{paper.tex}
+
+\end{document}

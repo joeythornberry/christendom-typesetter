@@ -1,0 +1,151 @@
+:root {
+	font-size: 12pt;
+}
+
+#paper-and-controls-container {
+	display: flex;
+	justify-content: space-between;
+}
+
+#metadata-paper-container {
+	width: 75%;
+	margin: 20px;
+}
+
+#metadata-container .center-metadata {
+	text-align: center;
+	margin-top: 10px;
+	margin-bottom: 10px;
+}
+
+#paper-container {
+	line-height: 1.5;
+}
+
+#controls-container {
+	width: 25vw;
+}
+
+#paper-container sup {
+	font-size: 0.6em;
+}
+
+#paper-container .block-quote-inner {
+	line-height: 1.25;
+	margin-top: -15px;
+	margin-left: 30px;
+	margin-bottom: 10px;
+	background: white;
+	white-space: pre-line;
+}
+
+#paper-container p {
+	text-indent: 2em;
+}
+
+#footnotes-paragraphs-controller {
+	z-index: 2000;
+	background: white;
+	border: 1px solid black;
+	width: 23vw;
+	padding-top: 10px;
+	padding-bottom: 10px;
+	position: fixed;
+	display: flex;
+	justify-content: space-around;
+}
+
+#new-paragraph-button-container {
+	margin-top: 50px;
+	z-index: 2000;
+	background: white;
+	border: 1px solid black;
+	width: 23vw;
+	padding-top: 10px;
+	padding-bottom: 10px;
+	position: fixed;
+	display: flex;
+	justify-content: space-around;
+}
+
+#paragraphs-container {
+	margin-top: 100px;
+	position: fixed;
+}
+
+.footnote-holder {
+	width: 22vw;
+	box-sizing: border-box;
+}
+
+.footnote-element {
+	width: 100%;
+	margin-bottom: 5px;
+	border: 1px solid black;
+	padding: 4px;
+	position: relative;
+	background: white;
+}
+
+.footnote-element .footnote-number-and-text {
+	width: 100%;
+	height: 20px;
+	background: #f0f0f0;
+}
+
+.footnote-element .footnote-code-and-text {
+	width: 100%;
+}
+
+.footnote-element.editing {
+	z-index: 1000;
+	background: #f0f0f0;
+}
+
+[contenteditable] {
+	outline: none;
+}
+
+.paragraph {
+	cursor: pointer;
+	margin-top: 20px;
+	display: grid;
+	grid-template-columns: 1fr 25px 25px;
+	width: 22vw;
+	height: 50px;
+}
+
+.paragraph .paragraph-name {
+	text-align: center;
+}
+
+.paragraph .arrow {
+	box-sizing: border-box;
+	height: 25px;
+	width: 25px;
+	font-size: 20px;
+	border: 1px solid black;
+	text-align: center;
+}
+
+.paragraph .edit-button {
+	height: 25px;
+	text-align: center;
+}
+
+.paragraph .delete-button {
+	height: 25px;
+	text-align: center;
+}
+
+.bibliography {
+	text-align: center;
+	margin-top: 50px;
+	margin-bottom: -35px;
+}
+
+.single-line-break {
+	height: 10px;
+	margin: 0;
+	background: #f0f0f0;
+}

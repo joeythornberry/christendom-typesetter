@@ -1,0 +1,51 @@
+body {
+	font-family: 'Times New Roman', Times, serif;
+	font-size: 12pt;
+	padding: 20px;
+}
+
+h3 {
+	padding: 0;
+	margin: 0;
+	width: 40%;
+}
+
+.step-title {
+	display: flex;
+	justify-content: space-between;
+}
+
+#welcome {
+	margin-bottom: 20px;
+	border: 2px solid black;
+	padding: 20px;
+}
+
+#logo {
+	margin: 0;
+}
+
+.instructions {
+	padding: 20px;
+	margin: 0;
+}
+
+button {
+	font-family: 'Times New Roman', Times, serif;
+	font-size: 12pt;
+}
+
+code {
+	font-weight: bold;
+}
+
+.footer {
+	margin: 0px;
+	font-family: monospace;
+	font-weight: bold;
+	font-size: 10pt;
+}
+
+sup {
+	font-size: 6pt;
+}

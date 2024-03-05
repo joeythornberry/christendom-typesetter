@@ -1,0 +1,6 @@
+block quotes have too much space above
+if preceeding line is exactly as long as
+the line width. 
+
+footnote controls make the screen too
+wide

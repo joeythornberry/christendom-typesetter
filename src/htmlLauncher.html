@@ -1,0 +1,54 @@
+<link rel="stylesheet" href="styleLauncher.css">
+<body>
+<div id="welcome">
+	<h1 id="logo"><code>\cdomtex</code></h1>
+	<div>
+	a streamlined typesetter that turns plain text into
+	fully-formatted academic papers
+	</div>
+</div>
+<div class="step">
+	<div class="step-title">
+		<h3><code>Step One: Open your paper's directory</code></h3>
+		<div>
+			<button id="open-directory-button">No directory selected</button>
+		</div>
+	</div>
+	<p class="instructions">
+		Each paper that uses <code>cdomtex</code>
+		must have its own directory (file folder). Create one or more .txt
+		files in that directory, and you can use <code>cdomtex</code>
+		to combine them into a paper. (The button above can also create a
+		directory if you don't already have one.)
+	</p>
+</div>
+<div class="step">
+	<div class="step-title">
+		<h3><code>Step Two: Write!</code></h3>
+		<div>
+			<button id="open-formatter-button">Open <code>cdomtex</code></button>
+		</div>
+	</div>
+	<p class="instructions">
+		<code>Cdomtex</code> will format your paper for you.
+		Click the button above to open the live preview, and
+		use a <b>text editor<sup>1</sup></b> of your choice to
+		open one of the files in the directory you picked
+		and start writing. When you're done, <code>cdomtex</code> will
+		compile your paper into a PDF.
+	</p>
+	<div class="footer">
+	<code>
+	<p>
+		<sup>1</sup>You don't use cdomtex to actually write your paper -
+		it just makes it look nice. You can use any text editor you want.
+		</p>
+		<p>Microsoft Word and Google Docs are not text editors - 
+		they are word processors, and cdomtex is designed
+		to replace them. Use Notepad (Windows) or TextEdit (Mac) instead.
+		I use Neovim.
+		</p>
+	</div>
+	<code>
+</div>
+</body>

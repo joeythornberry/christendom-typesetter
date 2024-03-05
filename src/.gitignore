@@ -1,0 +1,7 @@
+coverage/
+node_modules/
+miktex/
+miktex-portable.exe
+jest.config.json
+
+out/

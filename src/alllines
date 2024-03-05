@@ -1,0 +1,2869 @@
+const fs = require('fs');
+const path = require('path');
+const { prevsLocation } = require('./locations.js');
+
+
+class FileManager {
+
+	constructor(directory, reportChange, interval) {
+		this.directory = directory;
+		this.interval = interval;
+		this.reportChange = reportChange;
+		this.watched = [];
+	}
+
+	fullName(shortName) {
+		const fullName = path.join(this.directory, shortName);
+		return fullName;
+	}
+
+	async updateWatched(watched) {
+		for(const file of this.watched) {
+			if(!watched.includes(file)) {
+				fs.unwatchFile(this.fullName(file));
+			}
+		}
+
+		for(const file of watched) {
+			if(!this.watched.includes(file)) {
+				fs.watchFile(this.fullName(file), {interval: this.interval}, () => {
+					this.reportChange(file)
+					}
+				);
+				
+			}
+		}
+		this.watched = watched;
+	}
+
+}
+
+exports.FileManager = FileManager;
+
+const { FileManager } = require('./FileManager.js')
+const { createClientFilesystem } = require('../storage/createClientFilesystem.js')
+const fs = require('fs')
+const path = require('path')
+
+describe('FileManager', () => {
+
+	let reportChange = null
+	let directory = null
+	let fm = null
+	beforeEach(async () => {
+		directory = path.join(process.cwd(),fs.mkdtempSync('test'))
+		createClientFilesystem(directory)
+		reportChange = jest.fn(x => 10 + x)
+		fm = new FileManager(directory,reportChange,10)
+		fs.writeFileSync(fm.fullName('test.txt'),'test')
+		const newWatched = ['test.txt']
+		await fm.updateWatched(newWatched)
+	})
+
+	test('fullName is correct', () => {
+		expect(fm.fullName('test.txt')).toBe(path.join(directory,'test.txt'))
+	})
+
+	test('updateWatched adds files', () => {
+		expect(fm.watched).toEqual(['test.txt'])
+	})
+
+	test('updateWatched adds and removes files', async () => {
+		fs.writeFileSync(fm.fullName('test2.txt'),'test')
+		fs.writeFileSync(fm.fullName('test3.txt'),'test')
+		await fm.updateWatched(['test2.txt','test3.txt'])
+		expect(fm.watched).toEqual(['test2.txt', 'test3.txt'])
+		fs.unlinkSync(fm.fullName('test2.txt'))
+		fs.unlinkSync(fm.fullName('test3.txt'))
+	})
+
+	test('updateWatched handles duplicates', async () => {
+		await fm.updateWatched(['test.txt'])
+		expect(fm.watched).toEqual(['test.txt'])
+	})
+
+	test('updateWatched handles empty list', async () => {
+		await fm.updateWatched([])
+		expect(fm.watched).toEqual([])
+	})
+
+	test('FileWatcher detects changes', async () => {
+		fs.writeFileSync(fm.fullName('test.txt'),'test2')
+		return new Promise(resolve => setTimeout(resolve, 100)).then(() => {
+			expect(reportChange.mock.calls).toHaveLength(1)
+		})
+	})
+
+	afterEach(async () => {
+		fs.unlinkSync(fm.fullName('test.txt'))
+		await new Promise(resolve => fs.rm(directory, {recursive: true},resolve))
+		await fm.updateWatched([])
+		fm = null
+	})
+})
+
+class Footnote {
+	constructor(code, text) {
+		this.code = code
+		this.text = text
+	}
+}
+
+exports.Footnote = Footnote
+class FootnoteManager {
+
+	constructor(number, code, text, footnoteElement, updateFootnote) { 
+		this.number = number
+		this.code = code
+		this.text = text
+		this.footnoteElement = footnoteElement
+		this.textElement = null
+		this.updateFootnote = updateFootnote
+	}
+
+	initialize() {
+
+		this.footnoteElement.innerHTML = ''
+
+		const numberAndCodeElement = document.createElement('div')
+		numberAndCodeElement.classList.add('footnote-number-and-code')
+		numberAndCodeElement.innerHTML = `${this.number}: ${this.code}`
+
+		this.textElement = document.createElement('div')
+		this.textElement.classList.add('footnote-text')
+		this.textElement.contentEditable = true
+		this.textElement.spellcheck = false
+
+		this.textElement.innerHTML = this.text
+
+		this.footnoteElement.addEventListener('click', () => {
+			this.textElement.focus()
+		})
+
+		this.textElement.addEventListener('focus', () => {
+			this.footnoteElement.classList.add('editing')
+
+			/** 
+			 * fun hack to move the cursor to the end of the text
+			 * https://stackoverflow.com/a/55811159
+			 */
+			// select all the content in the element
+			document.execCommand('selectAll', false, null);
+			// collapse selection to the end
+			document.getSelection().collapseToEnd();
+		})
+
+		this.textElement.addEventListener('blur', () => {
+			this.footnoteElement.classList.remove('editing')
+			if (this.textElement.innerHTML != this.text) {
+				this.save()
+			}
+		})
+		this.textElement.addEventListener('keydown', (event) => {
+			if (event.key === 'Enter') {
+				event.preventDefault()
+				this.save()
+			}
+		})
+
+		this.footnoteElement.appendChild(numberAndCodeElement)
+		this.footnoteElement.appendChild(this.textElement)
+	}
+
+	save() {
+		this.text = this.textElement.innerHTML
+		this.updateFootnote(this.code, this.text)
+		this.enterDisplayMode()
+	}
+}
+
+exports.FootnoteManager = FootnoteManager
+/**
+ * @jest-environment jsdom
+ **/
+
+const { FootnoteManager } = require('./FootnoteManager');
+
+describe('FootnoteManager', () => {
+	let footnoteManager = null
+	let fakeSaveFootnote = null
+	const text = 'interesting text'
+	beforeEach(() => {
+		document.body.innerHTML = `
+			<div class="footnote-element"></div>
+		`
+		const footnoteElement = document.getElementsByClassName('footnote-element')[0]
+		document.execCommand = jest.fn()
+		fakeSaveFootnote = jest.fn()
+		footnoteManager = new FootnoteManager('5','a', text, footnoteElement, fakeSaveFootnote)
+	})
+
+	test('setup', () => {
+		footnoteManager.initialize()
+		const strings = [
+			'footnote-number-and-code',
+			'5',
+			'a',
+			'footnote-text',
+			text,
+		]
+		expect(document.body.innerHTML).toContain('footnote-element')
+		for (const s of strings) {
+			expect(document.body.innerHTML).toContain(s)
+		}
+	})
+
+	test('initialize works even if stuff is already there', () => {
+		const footnoteElement = document.getElementsByClassName('footnote-element')[0]
+		const previousText = 'previous text'
+		footnoteElement.innerHTML = previousText
+		footnoteManager.initialize()
+		expect(footnoteManager.footnoteElement.innerHTML).toContain(text)
+		expect(footnoteManager.footnoteElement.innerHTML).not.toContain(previousText)
+	})
+
+	test('click triggers focus on footnote text', () => {
+		footnoteManager.initialize()
+		const footnoteTextElement = document.getElementsByClassName('footnote-text')[0]
+		footnoteTextElement.focus = jest.fn()
+		footnoteManager.footnoteElement.click()
+		expect(footnoteTextElement.focus).toHaveBeenCalled()
+	})
+
+	test('click triggers edit mode, and enter goes back to display mode', () => {
+		
+		//this test is still broken
+		
+		footnoteManager.initialize()
+
+		const footnoteTextElement = document.getElementsByClassName('footnote-text')[0]
+		footnoteTextElement.focus()
+
+		const footnoteElement = document.getElementsByClassName('footnote-element')[0]
+
+		expect(document.execCommand).toHaveBeenCalledWith('selectAll', false, null)
+                expect(document.body.innerHTML).toContain('editing')
+		expect(footnoteElement.classList).toContain('editing')
+
+
+	        // const event = new KeyboardEvent('keydown', { key: 'Enter' })
+		// document.dispatchEvent(event)
+
+		// expect(fakeSaveFootnote).toHaveBeenCalled()
+	})
+})
+class Paper {
+	constructor(text,footnotes,paragraphs,metadata) {
+		this.text = text 
+		this.footnotes = footnotes
+		this.paragraphs = paragraphs
+		this.metadata = metadata
+	}
+}
+
+exports.Paper = Paper
+const { Paper } = require('./Paper.js');
+const { Footnote } = require('./Footnote.js');
+
+describe('Paper', () => {
+
+	const fakeAssembledFootnotes = [new Footnote('a','content of a'),new Footnote('b','content of b')]
+	const text = "this test paper was assembled";
+	const paper = new Paper(text,fakeAssembledFootnotes);
+
+	test('Paper is constructed properly', () => {
+		expect(paper.text).toBe("this test paper was assembled");
+		expect(paper.footnotes).toEqual(fakeAssembledFootnotes);
+	})
+
+	test('Paper is converted to JSON properly', () => {
+		const paperJSON = JSON.stringify(paper);
+		const expectedJSON = '{"text":"this test paper was assembled","footnotes":[{"code":"a","text":"content of a"},{"code":"b","text":"content of b"}]}';
+		expect(paperJSON).toBe(expectedJSON);
+	})
+})
+class ParagraphManager {
+	constructor(
+		number,
+		name,
+		paragraphElement,
+		moveParagraphUp,
+		moveParagraphDown,
+		chooseParagraph,
+		deleteParagraph
+	) { 
+		this.number = number
+		this.name = name
+		this.paragraphElement = paragraphElement
+		this.nameElement = null
+		this.moveParagraphUp = moveParagraphUp
+		this.moveParagraphDown = moveParagraphDown
+		this.chooseParagraph = chooseParagraph
+		this.deleteParagraph = deleteParagraph
+	}
+
+	initialize() {
+		this.nameElement = document.createElement('div')
+		this.nameElement.className = 'paragraph-name'
+		this.nameElement.innerHTML = `${this.number}: ${this.name}`
+		this.paragraphElement.appendChild(this.nameElement)
+
+		this.arrowsContainer = document.createElement('div')
+		this.arrowsContainer.className = 'arrows-container'
+		this.upArrow = document.createElement('div')
+		this.upArrow.className = 'arrow'
+		this.upArrow.innerHTML = '&#x25B2;'
+		this.downArrow = document.createElement('div')
+		this.downArrow.className = 'arrow'
+		this.downArrow.innerHTML = '&#x25BC;'
+		this.arrowsContainer.appendChild(this.upArrow)
+		this.arrowsContainer.appendChild(this.downArrow)
+
+		this.editAndDeleteContainer = document.createElement('div')
+
+		this.editButton = document.createElement('div')
+		this.editButton.className = 'edit-button'
+		this.editButton.innerHTML = '&#x270E;'
+
+		this.deleteButton = document.createElement('div')
+		this.deleteButton.className = 'delete-button'
+		this.deleteButton.innerHTML = '&#x2715;'
+
+		this.editAndDeleteContainer.appendChild(this.editButton)
+		this.editAndDeleteContainer.appendChild(this.deleteButton)
+		this.paragraphElement.appendChild(this.editAndDeleteContainer)
+
+		this.paragraphElement.appendChild(this.arrowsContainer)
+
+		this.upArrow.addEventListener('click', () => {
+			this.moveParagraphUp()
+		})
+
+		this.downArrow.addEventListener('click', () => {
+			this.moveParagraphDown()
+		})
+
+		this.editButton.addEventListener('click', () => {
+			this.chooseParagraph(this.number)
+		})
+
+		this.deleteButton.addEventListener('click', () => {
+			this.deleteParagraph()
+		})
+	}
+}
+
+exports.ParagraphManager = ParagraphManager
+This project may become open source in the future, but at the moment it is unlicensed, meaning "no one may reproduce, distribute, or create derivative works" from it. If you want to join this project as a collaborator, email me at lewis.thornberry@christendom.edu. (Of course, MikTeX, the project Cdomtex uses to compile LaTeX to PDF, is completely open source, and I claim no rights to it.)
+const { footnotesLocation } = require('./locations.js')
+const { Footnote } = require('./Footnote.js')
+const fs = require('fs');
+const path = require('path');
+
+function assembleFootnotes(directory) {
+	const footnotesJsonLocation = path.join(directory,footnotesLocation,"footnotes.json");
+	const footnotesJson = JSON.parse(fs.readFileSync(footnotesJsonLocation))
+	const assembledFootnotes = footnotesJson.map(footnote => {
+		const footnoteLocation = path.join(directory,footnotesLocation,footnote)
+		const footnoteText = fs.readFileSync(footnoteLocation).toString()
+		return new Footnote(footnote,footnoteText)
+	})
+	return assembledFootnotes
+}
+
+exports.assembleFootnotes = assembleFootnotes;
+const { assembleFootnotes } = require('./assembleFootnotes');
+const { Footnote } = require('./Footnote');
+const { footnotesLocation } = require('../storage/locations');
+const { createClientFilesystem } = require('../storage/createClientFilesystem');
+const { saveParsedFootnotes } = require('../html/saveParsedFootnotes');
+const fs = require('fs');
+const path = require('path');
+
+describe('assembleFootnotes', () => {
+	const footnotes = ['a', 'b'];
+	const directory = path.join(process.cwd(),'footnotesAssembleTest')
+	beforeAll(() => {
+		fs.mkdirSync(directory)
+		createClientFilesystem(directory)
+		saveParsedFootnotes(directory, footnotes)
+		const files = fs.readdirSync(path.join(directory, footnotesLocation))
+		for (const file of files) {
+			if (file !== 'footnotes.json') {
+				fs.writeFileSync(path.join(directory, footnotesLocation, file), `content of ${file}`)
+			}
+		}
+	}) 
+
+	test('should assemble footnotes', () => {
+		const fakeAssembledFootnotes = [new Footnote('a','content of a'),new Footnote('b','content of b')]
+		expect(assembleFootnotes(directory,footnotes)).toEqual(fakeAssembledFootnotes)
+	})
+
+	afterAll(() => {
+		fs.rmSync(directory, { recursive: true })
+	})
+
+})
+const { splitByEmptyLines } = require('./splitByEmptyLines');
+
+function assemblePaper(paragraphs, paragraphDelimiters) { 
+	let paper = ""
+	for(const paragraphFile of paragraphs) {
+		const splitFile = splitByEmptyLines(paragraphFile)
+		for(const paragraph of splitFile) {
+			paper += paragraphDelimiters.start
+			paper += paragraph
+			paper += paragraphDelimiters.end
+		}
+	}
+	return paper
+}
+
+exports.assemblePaper = assemblePaper;
+const { assemblePaper } = require('./assemblePaper');
+
+describe('assemblePaper', () => {
+	const paragraphs = [
+		`a\r\n\r\nb`,
+		`c\n\nd`,
+		'e'
+		]
+	test('assembles paragraphs into a paper', () => {
+		expect(assemblePaper(paragraphs,{start: "<p>", end: "</p>"})).toBe('<p>a</p><p>b</p><p>c</p><p>d</p><p>e</p>')
+	})
+})
+block quotes have too much space above
+if preceeding line is exactly as long as
+the line width. 
+
+footnote controls make the screen too
+wide
+%~dp0\node_modules\.bin\electron %~dp0\index.js
+const { ipcRenderer } = require('electron')
+
+function chooseParagraph(index) {
+	ipcRenderer.send('choose-paragraph',{ index: index })
+}
+
+exports.chooseParagraph = chooseParagraph
+const child_process = require('child_process')
+const path = require('path')
+const fs = require('fs')
+const { clientDirectory } = require('./locations.js')
+const { dialog } = require('electron')
+
+function compileLatexPDF(
+	        directory,
+		latex,
+		targetDirectory = path.join(directory,clientDirectory)
+			) {
+
+	let success = true
+
+	const currentDirectory = process.cwd()
+	process.chdir(targetDirectory)
+	let compileBatch = path.join(process.resourcesPath, 'compile.bat')
+	if(process.env.NODE_ENV === 'development') {
+		compileBatch = path.join(__dirname, 'resources', 'compile.bat')
+	}
+	try {
+		child_process.execSync(compileBatch, () => {})
+	} catch (e) {
+		const result = e.toString()
+		if (result.includes('The system cannot find')) {
+			const compileBatchText = fs.readFileSync(compileBatch, 'utf8')
+			const message = `Tried to invoke pdflatex with:
+			${compileBatchText} from ${process.cwd()} - it could not be found.
+			Full error message: ${result}`
+
+			dialog.showErrorBox('Cdomtex Error: cannot find MikTeX', message)
+			success = false
+		}
+		else {
+			const log = fs.readFileSync('style.log', 'utf8').split('\n')
+			const errorLog = []
+			let start = false
+			for (let i = log.length - 1; i >= 0; i--) {
+				const line = log[i]
+				if (line.includes('output PDF file') || line.includes('on the terminal')) {
+					continue
+				}
+				if (start) {
+					errorLog.push(line)
+				}
+				if (start && line.includes('!')) {
+					break
+				}
+				if (line.includes('!')) {
+					start = true
+					errorLog.push(line)
+				} 
+			}
+			const error = errorLog.reverse().join('\n')
+			dialog.showErrorBox('LaTeX Error',
+			`${error}
+			${result}`)
+			success = false
+		}	}
+	process.chdir(currentDirectory)
+	// const pdflatex = directory + 'miktex\\texmfs\\install\\miktex\\bin\\x64\\pdflatex.exe'
+	// const currentDirectory = process.cwd()
+	// process.chdir(targetDirectory)
+	// const command = `${pdflatex} ${latex}`
+	// const result = child_process.execSync(command, () => {}).toString()
+	// process.chdir(currentDirectory)
+	// return result
+	
+	return success
+}
+
+exports.compileLatexPDF = compileLatexPDF;
+const { txtToLatex } = require('./txtToLatex.js');
+const fs = require('fs');
+const { metadataLocation } = require('./locations.js');
+const { loadMetadata } = require('./loadMetadata.js');
+const path = require('path');
+
+function compileMetadataLatex(directory) {
+	const metadata = loadMetadata(directory);
+	for (const [id,text] of Object.entries(metadata)) {
+		const { latex } = txtToLatex(text,[]);
+		fs.writeFileSync(path.join(directory, metadataLocation, id + '.tex'), latex);
+	}
+}
+
+exports.compileMetadataLatex = compileMetadataLatex;
+const metadataTypes = ['name','class','professor','date','title']
+
+exports.metadataTypes = metadataTypes
+const { metadataTypes } = require('./constants.js')
+const { footnotesLocationPath, metadataLocationPath, metadataLocation, clientDirectory, paragraphsLocation} = require('./locations.js')
+const path = require('path');
+const fs = require('fs');
+
+function createClientFilesystem(directory) { 
+	let d = directory;
+	for(const metadataDirectory of metadataLocationPath) {
+		d = path.join(d, metadataDirectory);
+		if(!fs.existsSync(d)) {
+			fs.mkdirSync(d);
+		}
+	}
+
+	for (const metadatum of metadataTypes) {
+		const metadataPath = path.join(directory, metadataLocation, metadatum);
+		if(!fs.existsSync(metadataPath)) {
+			let text = `${metadatum} here`;
+			if(metadatum === 'date') {
+				text = `\\today`
+			}
+			fs.writeFileSync(metadataPath, text);
+		}
+	}
+
+	const metadataTexPath = path.join(directory, clientDirectory, "metadata.tex");
+	if (!fs.existsSync(metadataTexPath)) {
+		fs.copyFileSync(path.join(__dirname, "metadata.tex"), metadataTexPath);
+	}
+
+	const styleTexPath = path.join(directory, clientDirectory, "style.tex");
+	if (!fs.existsSync(styleTexPath)) {
+		fs.copyFileSync(path.join(__dirname, "style.tex"), styleTexPath);
+	}
+
+	const paragraphsPath = path.join(directory, paragraphsLocation, "paragraphs.json")
+	if (!fs.existsSync(paragraphsPath)) {
+		fs.writeFileSync(paragraphsPath, "[]");
+	}
+
+	d = directory
+	for(const footnotesDirectory of footnotesLocationPath) {
+		d = path.join(d, footnotesDirectory);
+		if(!fs.existsSync(d)) {
+			fs.mkdirSync(d);
+		}
+	}
+}
+	
+exports.createClientFilesystem = createClientFilesystem;
+const { createClientFilesystem } = require('./createClientFilesystem.js')
+const { metadataLocation, footnotesLocation, clientDirectory } = require('./locations.js')
+const { metadataTypes } = require('./constants.js')
+const fs = require('fs')
+const path = require('path')
+
+describe('createClientFilesystem', () => {
+
+	const directory = path.join(__dirname, 'testDirectory')
+
+	beforeEach(() => {
+		fs.mkdirSync(directory)
+		createClientFilesystem(directory)
+	})
+
+	test('client folder is created', () => {
+		expect(fs.existsSync(path.join(directory,clientDirectory))).toBe(true)
+	})
+
+	test('footnote folder is created', () => {
+		expect(fs.existsSync(path.join(directory,footnotesLocation))).toBe(true)
+	})
+	
+	test('metadata folder is created', () => {
+		expect(fs.existsSync(path.join(directory,metadataLocation))).toBe(true)
+	})
+
+	test('style.tex file is created', () => {
+		expect(fs.existsSync(path.join(directory, clientDirectory, 'style.tex'))).toBe(true)
+	})
+
+	test('metadata.tex file is created', () => {
+		expect(fs.existsSync(path.join(directory, clientDirectory, 'metadata.tex'))).toBe(true)
+	})
+
+	test('metadatum files are created', () => {
+		for (const type of metadataTypes) {
+			expect(fs.existsSync(path.join(directory, metadataLocation, type))).toBe(true)
+		}
+	})
+
+	afterEach(() => {
+		fs.rmSync(directory, { recursive: true })
+	})
+})
+const { FootnoteManager } = require('./FootnoteManager.js')
+
+function createFootnoteElements(footnotes) {
+	return footnotes.map((footnote,index) => {
+		const element = document.createElement('div')
+		element.classList.add('footnote-element')
+		return element
+	})
+}
+
+exports.createFootnoteElements = createFootnoteElements
+const { FootnoteManager } = require('./FootnoteManager.js')
+function createFootnoteManagers(footnoteElements, footnotes, updateFootnote) {
+	return footnoteElements.map((element,index) => {
+		const manager = new FootnoteManager(index + 1, footnotes[index].code, footnotes[index].text, element, updateFootnote)
+		manager.initialize()
+		return manager
+	})
+}
+
+exports.createFootnoteManagers = createFootnoteManagers
+function createParagraphElements(paragraphs) {
+	const paragraphElements = []
+	for (let i = 0; i < paragraphs.length; i++) {
+		const paragraphElement = document.createElement('div')
+		paragraphElement.className = 'paragraph'
+		paragraphElements.push(paragraphElement)
+	}
+	return paragraphElements
+}
+
+exports.createParagraphElements = createParagraphElements
+/*
+ * @jest-environment jsdom
+ */
+
+const { createParagraphElements } = require('./createParagraphElements');
+
+describe('createParagraphElements', () => {
+	const paragraphs = ['1', '2', '3']
+	const paragraphElements = createParagraphElements(paragraphs)
+
+	test('creates a paragraph element for each paragraph', () => {
+		expect(paragraphElements.length).toBe(3)
+		for (let i = 0; i < paragraphElements.length; i++) {
+			expect(paragraphElements[i].classList).toContain('paragraph')
+		}
+	})
+})
+const { ParagraphManager } = require('./ParagraphManager.js');
+const { chooseParagraph } = require('./choooseParagraph.js');
+const { sendParagraphs } = require('./sendParagraphs.js');
+
+function createParagraphManagers(paragraphs, paragraphElements, displayParagraphs, paragraphsContainer) {
+	const paragraphManagers = []
+	for (let i = 0; i < paragraphs.length; i++) {
+		const paragraphManager =
+			new ParagraphManager(
+				i+1,
+				paragraphs[i],
+				paragraphElements[i],
+				() => { 
+					moveParagraphUp(paragraphs, i, displayParagraphs, paragraphsContainer),
+					sendParagraphs(paragraphs)
+				},
+				() => { 
+					moveParagraphDown(paragraphs, i, displayParagraphs, paragraphsContainer),
+					sendParagraphs(paragraphs)
+				},
+				() => chooseParagraph(i+1),
+				() => {
+					deleteParagraph(paragraphs, i, displayParagraphs, paragraphsContainer)
+					sendParagraphs(paragraphs)
+				}
+
+			)
+		paragraphManager.initialize()
+		paragraphManagers.push(paragraphManager)
+	}
+	return paragraphManagers
+}
+
+function moveParagraphUp(paragraphs, index, displayParagraphs, paragraphsContainer) {
+	if (index > 0) {
+		const mover = paragraphs[index]
+		paragraphs[index] = paragraphs[index - 1]
+		paragraphs[index - 1] = mover
+	}
+	displayParagraphs(paragraphs, paragraphsContainer)
+}
+
+function moveParagraphDown(paragraphs, index, displayParagraphs, paragraphsContainer) {
+	if (index < paragraphs.length - 1) {
+		const mover = paragraphs[index]
+		paragraphs[index] = paragraphs[index + 1]
+		paragraphs[index + 1] = mover
+	}
+	displayParagraphs(paragraphs, paragraphsContainer)
+}
+
+function deleteParagraph(paragraphs, index, displayParagraphs, paragraphsContainer) {
+	paragraphs.splice(index, 1)
+	displayParagraphs(paragraphs, paragraphsContainer)
+}
+
+exports.createParagraphManagers = createParagraphManagers
+exports.moveParagraphUp = moveParagraphUp // for testing only
+exports.moveParagraphDown = moveParagraphDown // for testing only
+exports.deleteParagraph = deleteParagraph // for testing only
+const { createFootnoteElements } = require('./createFootnoteElements.js');
+const { getFootnoteLocations } = require('./getFootnoteLocations.js');
+const { createFootnoteManagers } = require('./createFootnoteManagers.js');
+const { distributeFootnoteElements } = require('./distributeFootnoteElements.js');
+const { ipcRenderer } = require('electron');
+
+function displayFootnotes(footnotes, paperContainer) {
+	const footnotesContainer = document.getElementById('footnotes-container');
+	if (footnotesContainer === null) {
+		console.log('footnotesContainer is null');
+		return
+	}
+	footnotesContainer.innerHTML = 'Footnotes will appear here.';
+        const footnoteElements = createFootnoteElements(footnotes)
+	const footnoteLocations = getFootnoteLocations(paperContainer);
+	const footnoteManagers = createFootnoteManagers(footnoteElements, footnotes, updateFootnote)
+	distributeFootnoteElements(footnotesContainer, footnoteLocations, footnoteElements);
+}
+
+function updateFootnote(code, text) {
+	ipcRenderer.send('update-footnote', {code, text})
+}
+
+
+exports.displayFootnotes = displayFootnotes;
+/*
+ * @jest-environment jsdom
+ */
+
+const { displayFootnotes } = require('./displayFootnotes');
+
+describe('displayFootnotes', () => {
+	beforeEach(() => {
+		document.body.innerHTML = `
+		<div id="paper-container">
+		hello world.<sup>1</sup>
+		</div>
+		<div id="footnotes-paragraphs-container">
+		    <div id="footnotes-container">
+		    </div>
+		</div>
+		`;
+	})
+
+	test('displays footnotes', () => {
+		const footnotes = [{
+			code: 'testcode',
+			text: 'test text'
+		}]
+		displayFootnotes(footnotes, document.getElementById('paper-container'))
+		const footnotesContainer = document.getElementById('footnotes-container')
+		expect(footnotesContainer.innerHTML).toContain('footnote-element')
+		expect(footnotesContainer.innerHTML).toContain('testcode')
+		expect(footnotesContainer.innerHTML).toContain('test text')
+	})
+})
+const { sendMetadatum } = require('./sendMetadatum.js');
+
+function displayMetadata(metadata) {
+	const metadataContainer = document.getElementById('metadata-container');
+	metadataContainer.innerHTML = '';
+
+	const metadataElements = [];
+
+	for (const datum of ['name','class','professor','date']) {
+		const metadataElement = document.createElement('div');
+		metadataElement.innerHTML = metadata[datum];
+		metadataElement.classList.add("upper-left-metadata");
+		metadataElements.push(metadataElement);
+		metadataElement.oninput = function() {
+			sendMetadatum(datum, metadataElement.innerHTML);
+		}
+	}
+
+	for (const datum of ['title']) {
+		const metadataElement = document.createElement('div');
+		metadataElement.innerHTML = metadata[datum];
+		metadataElement.classList.add("center-metadata");
+		metadataElements.push(metadataElement);
+		metadataElement.oninput = function() {
+			sendMetadatum(datum, metadataElement.innerHTML);
+		}
+	}
+
+	for (const metadataElement of metadataElements) {
+		metadataElement.contentEditable = true;
+		metadataElement.spellcheck = false;
+		metadataContainer.appendChild(metadataElement);
+	}
+}
+
+exports.displayMetadata = displayMetadata;
+/*
+ * @jest-environment jsdom
+ */
+
+const { metadataTypes } = require('../storage/constants')
+
+const { displayMetadata } = require('./displayMetadata')
+
+describe('displayMetadata', () => {
+
+	const metadata = {}
+	for (const type of metadataTypes) {
+		metadata[type] = `hello ${type}`
+	}
+
+	beforeAll(() => { 
+		const metadataContainer = document.createElement('div')
+		metadataContainer.id = 'metadata-container'
+		document.body.appendChild(metadataContainer)
+	})
+
+	test('displayMetadata does not error', () => {
+		displayMetadata(metadata)
+	})
+
+	test('metadata shows up correctly', () => {
+		for (const metadatum in metadata) {
+			expect(document.body.innerHTML).toContain(metadatum)
+		}
+	})
+})
+const { createParagraphElements } = require('./createParagraphElements.js')
+const { createParagraphManagers } = require('./createParagraphManagers.js')
+
+function displayParagraphs(paragraphs, paragraphsContainer) {
+	paragraphsContainer.innerHTML = ''
+	const paragraphElements = createParagraphElements(paragraphs)
+	const paragraphManagers = createParagraphManagers(paragraphs, paragraphElements, displayParagraphs, paragraphsContainer)
+	paragraphElements.forEach(paragraphElement => {
+		paragraphsContainer.appendChild(paragraphElement)
+	})
+}
+
+exports.displayParagraphs = displayParagraphs
+function distributeFootnoteElements(footnotesContainer,locations,footnoteElements) {
+	if (locations.length !== footnoteElements.length) {
+		console.log(locations)
+		console.log(footnoteElements)
+		throw new Error('locations and footnoteElements must be the same length')
+	}
+
+	const footnotesContainerTop = footnotesContainer.getBoundingClientRect().top
+
+	let previousFootnoteHolder = {
+		getBoundingClientRect: () => {
+			return {
+				bottom: -1000000
+			}
+		},
+		appendChild: (child) => {throw new Error('no previous footnote holder')}
+	}
+
+	for (let i = 0; i < locations.length; i++) {
+		const footnoteElement = footnoteElements[i]
+		const location = locations[i]
+		const top = (location-footnotesContainerTop) + 'px'
+
+		const footnoteHolderBottom = previousFootnoteHolder.getBoundingClientRect().bottom
+		if (location > footnoteHolderBottom) {
+			const footnoteHolder = document.createElement('div')
+			footnoteHolder.classList.add('footnote-holder')
+			footnoteHolder.style.setProperty('position', 'absolute')
+			footnoteHolder.style.setProperty('margin-top', top)
+			footnoteHolder.appendChild(footnoteElement)
+			footnotesContainer.appendChild(footnoteHolder)
+			previousFootnoteHolder = footnoteHolder
+		} else {
+			previousFootnoteHolder.appendChild(footnoteElement)
+		}
+	}
+
+}
+
+exports.distributeFootnoteElements = distributeFootnoteElements
+node %~dp0/fakeHtml.js %~dp0
+module.exports = {
+  packagerConfig: {
+    asar: true,
+  },
+  rebuildConfig: {},
+  makers: [
+    {
+      name: '@electron-forge/maker-squirrel',
+      config: {},
+    },
+    {
+      name: '@electron-forge/maker-zip',
+      platforms: ['darwin'],
+    },
+    {
+      name: '@electron-forge/maker-deb',
+      config: {},
+    },
+    {
+      name: '@electron-forge/maker-rpm',
+      config: {},
+    },
+  ],
+  plugins: [
+    {
+      name: '@electron-forge/plugin-auto-unpack-natives',
+      config: {},
+    },
+  ],
+};
+/*
+ * @jest-environment jsdom
+ */
+
+const { ParagraphManager } = require('./ParagraphManager');
+
+const { deleteParagraph, moveParagraphUp, moveParagraphDown } = require('./createParagraphManagers');
+
+describe('moving paragraphs', () => {
+	const displayParagraphs = jest.fn()
+	const paragraphsContainer = document.createElement('div')
+
+	test('moveParagraphUp', () => {
+		const paragraphs = [
+			{ text: 'paragraph 1' },
+			{ text: 'paragraph 2' },
+			{ text: 'paragraph 3' },
+		]
+		const paragraphIndex = 1
+		const expectedParagraphs = [
+			{ text: 'paragraph 2' },
+			{ text: 'paragraph 1' },
+			{ text: 'paragraph 3' },
+		]
+		moveParagraphUp(paragraphs, paragraphIndex, displayParagraphs, paragraphsContainer)
+		expect(displayParagraphs).toHaveBeenCalledWith(expectedParagraphs, paragraphsContainer)
+		expect(paragraphs).toEqual(expectedParagraphs)
+	})
+
+	test('moveParagraphDown', () => {
+		const paragraphs = [
+			{ text: 'paragraph 1' },
+			{ text: 'paragraph 2' },
+			{ text: 'paragraph 3' },
+		]
+		const paragraphIndex = 1
+		const expectedParagraphs = [
+			{ text: 'paragraph 1' },
+			{ text: 'paragraph 3' },
+			{ text: 'paragraph 2' },
+		]
+		moveParagraphDown(paragraphs, paragraphIndex, displayParagraphs, paragraphsContainer)
+		expect(displayParagraphs).toHaveBeenCalledWith(expectedParagraphs, paragraphsContainer)
+		expect(paragraphs).toEqual(expectedParagraphs)
+	})
+
+	test('move paragraph with first and last paragraph', () => {
+		const paragraphs = [
+			{ text: 'paragraph 1' },
+		]
+		const paragraphIndex = 0
+		const expectedParagraphs = [
+			{ text: 'paragraph 1' },
+		]
+		moveParagraphUp(paragraphs, paragraphIndex, displayParagraphs, paragraphsContainer)
+		expect(paragraphs).toEqual(expectedParagraphs)
+		moveParagraphDown(paragraphs, paragraphIndex, displayParagraphs, paragraphsContainer)
+		expect(paragraphs).toEqual(expectedParagraphs)
+	})
+
+	test('delete paragraph', () => {
+		const paragraphs = [
+			{ text: 'paragraph 1' },
+			{ text: 'paragraph 2' },
+			{ text: 'paragraph 3' },
+		]
+		const paragraphIndex = 1
+		const expectedParagraphs = [
+			{ text: 'paragraph 1' },
+			{ text: 'paragraph 3' },
+		]
+		deleteParagraph(paragraphs, paragraphIndex, displayParagraphs, paragraphsContainer)
+		expect(displayParagraphs).toHaveBeenCalledWith(expectedParagraphs, paragraphsContainer)
+		expect(paragraphs).toEqual(expectedParagraphs)
+	})
+
+})
+
+describe('ParagraphManager', () => {
+	let paragraphManager = null
+	const number = 1
+	const name = 'paragraph.txt'
+	const paragraphElement = document.createElement('div')
+	const fakeMoveParagraphUp = jest.fn()
+	const fakeMoveParagraphDown = jest.fn()
+	const fakeChooseParagraph = jest.fn()
+	const fakeDeleteParagraph = jest.fn()
+
+	beforeAll(() => {
+		document.body.innerHTML = ''
+		paragraphManager = new ParagraphManager(
+					number,
+					name,
+					paragraphElement,
+					fakeMoveParagraphUp,
+					fakeMoveParagraphDown,
+					fakeChooseParagraph,
+					fakeDeleteParagraph
+					)
+		paragraphManager.initialize()
+		document.body.appendChild(paragraphElement)
+	})
+
+	test('initialize creates proper elements', () => {
+		const strings = ['paragraph-name', 'edit-button', 'delete-button', 'arrows-container','paragraph.txt']
+		for (const string of strings) {
+			expect(document.body.innerHTML).toContain(string)
+		}
+		expect(document.getElementsByClassName('arrow').length).toBe(2)
+	})
+
+	test('clicking edit button calls chooseParagraph', () => {
+		const editButton = document.getElementsByClassName('edit-button')[0]
+		editButton.click()
+		expect(fakeChooseParagraph).toHaveBeenCalledWith(number)
+	})
+
+	test('clicking delete button calls deleteParagraph', () => {
+		const deleteButton = document.getElementsByClassName('delete-button')[0]
+		deleteButton.click()
+		expect(fakeDeleteParagraph).toHaveBeenCalled()
+	})
+
+	test('clicking up arrow calls moveParagraphUp', () => {
+		const upArrow = document.getElementsByClassName('arrow')[0]
+		upArrow.click()
+		expect(fakeMoveParagraphUp).toHaveBeenCalled()
+	})
+
+	test('clicking down arrow calls moveParagraphDown', () => {
+		const downArrow = document.getElementsByClassName('arrow')[1]
+		downArrow.click()
+		expect(fakeMoveParagraphDown).toHaveBeenCalled()
+	})
+})
+function getFootnoteLocations(paperContainer) {
+	const sups = paperContainer.querySelectorAll('sup')
+	const locations = []
+        for(const sup of sups) {
+		locations.push(sup.getBoundingClientRect().top)
+	}
+	return locations
+}
+
+exports.getFootnoteLocations = getFootnoteLocations
+/**
+ * @jest-environment jsdom
+ */
+
+const { getFootnoteLocations } = require('./getFootnoteLocations');
+
+describe('getFootnoteLocations', () => {
+	const { paperContainer, footnotesContainer } = createFakePaperAndControls()
+	const locations = getFootnoteLocations(paperContainer,footnotesContainer)
+
+	test('returns an array', () => {
+		expect(Array.isArray(locations)).toBe(true)
+	})
+
+	test('array has correct length', () => {
+		expect(locations.length).toBe(3)
+	})
+
+	test('array contains numbers', () => {
+		locations.forEach((location) => {
+			expect(typeof location).toBe('number')
+		})
+	})
+
+	test('each number is greater than or equal to the last', () => {
+		// jest doesn't really work well for this - i think it sticks the entire paper on one line, and <br>s don't help. right now, they all have a location of 0, which isn't great.
+		locations.forEach((location,index) => {
+			if (index > 0) {
+				expect(location >= locations[index-1]).toBe(true)
+			}
+		})
+	})
+})
+
+function createFakePaperAndControls() {
+	document.body.innerHTML =
+	'<div id="paper-and-controls-container">' +
+	'<span id="paper-container">' +
+		'<p>lorem ipsum dolor sit amet, conseptetur adipiscing elit,<sup>1</sup>' +
+		'sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.' +
+		'Helbren dolor est sed contra lumen dosn hhsjaklfdjhflasjdhf<sup>2</sup>' +
+		'sdjflashdfkjsdhfkjdsh ahsdjflasdkjfhlasdkjfh hdjflasdkjfhalsdkjhf' +
+		'hadjflhasdfkjhsadlfkj<sup>3</sup>' + 
+		'</p>'+
+	'</span>' +
+	'<span id="footnotes-container">' +
+	'</span>' +
+	'</div>'
+
+	const paperContainer = document.getElementById('paper-container')
+	const footnotesContainer = document.getElementById('footnotes-container')
+
+	return { paperContainer, footnotesContainer }
+}
+const fs = require('fs');
+const path = require('path');
+
+function getPotentialParagraphs(directory) {
+	const files = getFiles(directory)
+	return files
+}
+
+function getFiles(directory, directoryPath = '') {
+	let files = []
+	fs.readdirSync(directory).forEach(file => {
+		const location = path.join(directory, file)
+		const relativeLocation = directoryPath == '' ? file : [directoryPath, file].join('/')
+		if (!relativeLocation.includes('!') && !relativeLocation.endsWith('.pdf')) {
+			const isDirectory = fs.lstatSync(location).isDirectory()
+			if (isDirectory) {
+				files = files.concat(getFiles(location, file))
+			} else {
+				files.push(relativeLocation)
+			}
+		}
+	})
+	return files
+}
+
+exports.getPotentialParagraphs = getPotentialParagraphs;
+const { getPotentialParagraphs } = require('./getPotentialParagraphs');
+const fs = require('fs');
+const path = require('path');
+
+describe('getPotentialParagraphs', () => {
+	test('gets all files recursively', () => {
+		const directory = 'testGetPotentialParagraphs'
+		fs.mkdirSync(directory)
+		fs.mkdirSync(directory + '/1')
+		fs.writeFileSync(directory + '/1/1.txt', '1')
+		fs.writeFileSync(directory + '/2.txt', '2')
+		const files = getPotentialParagraphs('testGetPotentialParagraphs')
+		expect(files).toEqual(['1/1.txt', '2.txt'])
+	})
+
+	test('ignores files with ! in the name', () => {
+		const directory = 'testGetPotentialParagraphs'
+		fs.mkdirSync(directory)
+		fs.mkdirSync(directory + '/1')
+		fs.mkdirSync(directory + '/2!')
+		fs.writeFileSync(directory + '/1/1.txt', '1')
+		fs.writeFileSync(directory + '/2!.txt', '2')
+		fs.writeFileSync(directory + '/1/3!.txt', '3')
+		fs.writeFileSync(directory + '/2!/4.txt', '4')
+		const files = getPotentialParagraphs('testGetPotentialParagraphs')
+		expect(files).toEqual(['1/1.txt'])
+	})
+
+	afterEach(() => {
+		fs.rmSync('testGetPotentialParagraphs', { recursive: true })
+	})
+})
+<html>
+	<head>
+		<link rel="stylesheet" href="styleChooser.css">
+	</head>
+	<body>
+		<div id="potential-paragraphs-container">
+		</div>
+	</body>
+</html>
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<link rel="stylesheet" href="styleFormatter.css">
+	</head>
+
+	<body>
+		<button id='compile-latex-button'>Compile to PDF</button>
+		<button id='recompile-latex-button'>Recompile existing LaTeX to PDF</button>
+		<div id="paper-and-controls-container">
+
+			<div id="metadata-paper-container">
+				<div id="metadata-container">
+				</div>
+				<div id="paper-container">
+					no paper yet
+				</div>
+			</div>
+
+			<div id="controls-container">
+				<div id="footnotes-paragraphs-controller">
+					<button id="footnotes-button">
+						Footnotes
+					</button>
+					<button id="paragraphs-button">
+						Paragraphs
+					</button>
+				</div>
+				<div id="footnotes-paragraphs-container">
+					<div id="footnotes-container">
+						Footnotes will appear here.
+					</div>
+				</div>
+			</div>
+		</div>
+	</body> 
+</html>
+<link rel="stylesheet" href="styleLauncher.css">
+<body>
+<div id="welcome">
+	<h1 id="logo"><code>\cdomtex</code></h1>
+	<div>
+	a streamlined typesetter that turns plain text into
+	fully-formatted academic papers
+	</div>
+</div>
+<div class="step">
+	<div class="step-title">
+		<h3><code>Step One: Open your paper's directory</code></h3>
+		<div>
+			<button id="open-directory-button">No directory selected</button>
+		</div>
+	</div>
+	<p class="instructions">
+		Each paper that uses <code>cdomtex</code>
+		must have its own directory (file folder). Create one or more .txt
+		files in that directory, and you can use <code>cdomtex</code>
+		to combine them into a paper. (The button above can also create a
+		directory if you don't already have one.)
+	</p>
+</div>
+<div class="step">
+	<div class="step-title">
+		<h3><code>Step Two: Write!</code></h3>
+		<div>
+			<button id="open-formatter-button">Open <code>cdomtex</code></button>
+		</div>
+	</div>
+	<p class="instructions">
+		<code>Cdomtex</code> will format your paper for you.
+		Click the button above to open the live preview, and
+		use a <b>text editor<sup>1</sup></b> of your choice to
+		open one of the files in the directory you picked
+		and start writing. When you're done, <code>cdomtex</code> will
+		compile your paper into a PDF.
+	</p>
+	<div class="footer">
+	<code>
+	<p>
+		<sup>1</sup>You don't use cdomtex to actually write your paper -
+		it just makes it look nice. You can use any text editor you want.
+		</p>
+		<p>Microsoft Word and Google Docs are not text editors - 
+		they are word processors, and cdomtex is designed
+		to replace them. Use Notepad (Windows) or TextEdit (Mac) instead.
+		I use Neovim.
+		</p>
+	</div>
+	<code>
+</div>
+</body>
+const { replaceFootnoteHtml } = require('./replaceFootnote.js');
+
+const replacements = {
+	'[' : {
+		"open_block_quotes":
+		{
+			before: '[[[',
+			after: '<div class="block-quote-outer"><div class="block-quote-inner">',
+		}
+			
+	},
+	']' : {
+		"close_block_quotes":
+		{
+			before: ']]]',
+			after: '</div></div>',
+		}
+	},
+	'W': {
+		"works_cited": {
+			before: "WORKS CITED",
+			after: "<div class='bibliography'>WORKS CITED</div>"
+			}
+	},
+	'B': {
+		"bibliography": {
+			before: "BIBLIOGRAPHY",
+			after: "<div class='bibliography'>BIBLIOGRAPHY</div>"
+		}
+	},
+	'_': {
+		"bibliography_item":
+		{
+			before: "___",
+			after: "<br><br>"
+		},
+		"italics":
+		{
+			createReplacement: (text,data) => {
+			        if (data.inItalics) {
+					data.inItalics = false;
+					return { 
+						before: '_',
+						after: '</i>'
+					}
+				} else {
+					data.inItalics = true;
+					return {
+						before: '_',
+						after: '<i>'
+					}
+				}
+			}
+		}
+	},
+	'^': {
+		"footnote":
+		{
+			createReplacement:  replaceFootnoteHtml
+		}
+	},
+}
+
+exports.replacements = replacements;
+const { dialog, app } = require('electron')
+const { launcher } = require('./windowLauncher.js')
+
+function start() {
+	launcher()
+}
+
+app.whenReady().then(() => {
+	if (process.env.NODE_ENV === 'development') {
+		console.log('Running in development mode')
+	} else {
+		console.log('Running in production mode')
+	}
+	start()
+})
+const { replaceFootnoteLatex } = require('./replaceFootnote.js');
+const { replaceNewlineLatex } = require('./replaceNewlineLatex.js');
+const replacements = {
+	'[': {
+		"open_block_quotes": {
+			createReplacement: (text, data) => {
+				data.inBlockQuote = true
+				return {
+					before: "[[[",
+					after: "\\Q{"
+				}
+			}
+		}
+	},
+	']': {
+		"close_block_quotes": {
+			createReplacement: (text, data) => {
+				data.inBlockQuote = false
+				return {
+					before: "]]]",
+					after: "}"
+				}
+			}
+		}
+	},
+	'W' : {
+		"works_cited": {
+			before: "WORKS CITED",
+			after: "\\newpage\\centerline{WORKS CITED}"
+		}
+	},
+	'B': {
+		"bibliography": {
+			before: "BIBLIOGRAPHY",
+			after: "\\newpage\\centerline{BIBLIOGRAPHY}"
+		}
+	},
+	'_': {
+
+		"bibliography_item": {
+			before: "___",
+			after: "\\b "
+		},
+		"italics":
+		{
+			createReplacement: (text,data) => {
+			        if (data.inItalics) {
+					data.inItalics = false;
+					return { 
+						before: '_',
+						after: '}'
+					}
+				} else {
+					data.inItalics = true;
+					return {
+						before: '_',
+						after: '\\textit{'
+					}
+				}
+			}
+		}
+	},
+	'"': {
+		"quote": {
+			createReplacement: (text, data) => {
+				if (data.inQuote) {
+					data.inQuote = false
+					return {
+						before: '"',
+						after: "}",
+					}
+				} else {
+					data.inQuote = true
+					return {
+						before: '"',
+						after: "\\q{"
+					}
+				}
+			}
+		}
+	},
+
+	'^': {
+		"footnote": {
+			createReplacement: replaceFootnoteLatex
+		}
+	},
+	"\n": {
+		"newline": {
+			createReplacement: replaceNewlineLatex
+		}
+
+	},
+	"&": {
+		"leading_space": {
+			before: "&nbsp;",
+			after: "\\ "
+		}
+	},
+}
+
+exports.replacements = replacements
+const { metadataLocation } = require('./locations.js');
+const { metadataTypes } = require('./constants.js');
+const path = require('path');
+const fs = require('fs');
+
+
+function loadMetadata(directory) {
+	const metadata = {};
+
+	for (const id of metadataTypes) {
+		const metadataPath = path.join(directory, metadataLocation, id);
+		let metadataValue = '';
+
+		try {
+			metadataValue = fs.readFileSync(metadataPath, 'utf8');
+		} catch (err) {
+			if (err.code !== 'ENOENT') {
+				throw err;
+			}
+		}
+
+		metadata[id] = metadataValue;
+	}
+
+	return metadata;
+}
+
+exports.loadMetadata = loadMetadata;
+const { loadMetadata } = require('./loadMetadata')
+const { metadataTypes } = require('./constants')
+const { metadataLocation } = require('./locations')
+const { compileMetadataLatex } = require('../html/compileMetadataLatex')
+const fs = require('fs')
+const path = require('path')
+
+describe('loadMetadata', () => {
+	const directory = 'testLoadMetadata'
+	beforeAll(() => {
+		fs.mkdirSync(`${directory}/${metadataLocation}`, { recursive: true })
+	})
+
+	test('returns empty strings if no metadata', () => {
+		const metadata = loadMetadata(directory)
+		for (const metadataType of metadataTypes) {
+			expect(metadata[metadataType]).toBe('')
+		}
+	})
+
+	test('loads metadata', () => {
+		for (const metadataType of metadataTypes) {
+			fs.writeFileSync(
+				`${directory}/${metadataLocation}/${metadataType}`,
+				`_this_ is ${metadataType}`
+			)
+		}
+		const metadata = loadMetadata(directory)
+		for (const metadataType of metadataTypes) {
+			expect(metadata[metadataType]).toBe(`_this_ is ${metadataType}`)
+		}
+	})
+
+	test('compileMetadataLatex works properly', () => {
+		compileMetadataLatex(directory)
+		for (const metadataType of metadataTypes) {
+			const location = path.join(directory, metadataLocation, metadataType + ".tex")
+			const exists = fs.existsSync(location)
+			expect(exists).toBe(true)
+			const latex = fs.readFileSync(location, 'utf-8')
+			expect(latex).toBe(`\\textit{this} is ${metadataType}`)
+		}
+	})
+
+	afterAll(() => {
+		fs.rmSync(directory, { recursive: true })
+	})
+})
+
+const { loadParagraphs } = require('./loadParagraphs.js')
+const { loadParagraphText } = require('./loadParagraphText.js')
+const { assemblePaper } = require('./assemblePaper.js')
+const { assembleFootnotes } = require('./assembleFootnotes.js')
+const { saveParsedFootnotes } = require('./saveParsedFootnotes.js')
+const { loadMetadata } = require('./loadMetadata.js')
+const { txtToHtml } = require('./txtToHtml.js')
+const { Paper } = require('./Paper.js')
+
+function loadPaper(directory){
+	const paragraphNames = loadParagraphs(directory)
+	const paragraphText = loadParagraphText(directory,paragraphNames)
+	const text = assemblePaper(paragraphText, {start: "<p>", end: "</p>"})
+	const parsed = txtToHtml(text)
+	saveParsedFootnotes(directory,parsed.footnotes)
+	const assembledFootnotes = assembleFootnotes(directory)
+	const metadata = loadMetadata(directory)
+	const assembledPaper =
+		new Paper(parsed.html, assembledFootnotes, paragraphNames, metadata)
+	console.log(assembledPaper)
+	return assembledPaper
+}
+
+exports.loadPaper = loadPaper
+const fs = require('fs');
+const path = require('path');
+
+function loadParagraphText(directory, paragraphs) {
+	return paragraphs.map(paragraph => {
+		const location = path.join(directory, paragraph)
+		const text = fs.readFileSync(location, 'utf8')
+		return text 
+	})
+}
+
+exports.loadParagraphText = loadParagraphText
+const { paragraphsLocation } = require('./locations.js')
+const path = require('path')
+const fs = require('fs')
+
+function loadParagraphs(directory) {
+	const location = path.join(directory,paragraphsLocation,'paragraphs.json')
+	const paragraphsJson = fs.readFileSync(location,'utf-8')
+	const paragraphs = JSON.parse(paragraphsJson)
+	return paragraphs
+}
+
+exports.loadParagraphs = loadParagraphs
+const path = require('path');
+
+const clientDirectory = '!cdomtex'
+
+exports.clientDirectory = clientDirectory;
+
+const metadataLocationPath = [clientDirectory, 'metadata'];
+const metadataLocation = path.join(...metadataLocationPath);
+
+exports.metadataLocationPath = metadataLocationPath;
+exports.metadataLocation = metadataLocation;
+
+const footnotesLocationPath = [clientDirectory, 'footnotes'];
+const footnotesLocation = path.join(...footnotesLocationPath);
+
+exports.footnotesLocationPath = footnotesLocationPath;
+exports.footnotesLocation = footnotesLocation;
+
+const paragraphsLocationPath = [clientDirectory]
+const paragraphsLocation = path.join(...paragraphsLocationPath);
+
+exports.paragraphsLocationPath = paragraphsLocationPath
+exports.paragraphsLocation = paragraphsLocation
+
+const paperLocationPath = [clientDirectory,"paper.tex"]
+const paperLocation = path.join(...paperLocationPath)
+
+exports.paperLocationPath = paperLocationPath
+exports.paperLocation = paperLocation
+\noindent
+\input{metadata/name.tex}\newline
+\input{metadata/class.tex}\newline
+\input{metadata/professor.tex}\newline
+\input{metadata/date.tex}\par
+\vspace{0.4cm}
+\centerline{\input{metadata/title.tex}}
+const path = require('path')
+const fs = require('fs')
+const { compileLatexPDF } = require('./compileLatexPDF.js')
+const { clientDirectory, metadataLocation } = require('../storage/locations.js')
+const { createClientFilesystem } = require('../storage/createClientFilesystem.js')
+const child_process = require('child_process')
+const { metadataTypes } = require('../storage/constants.js')
+
+function compile(location) {
+	const pdflatex = process.cwd() + '\\miktex\\texmfs\\install\\miktex\\bin\\x64\\pdflatex.exe'
+	const command = `${pdflatex} ${location}`
+	const result = child_process.execSync(command).toString()
+	return result
+}
+
+describe('miktex', () => {
+	
+	const testLatex = 
+		`\\documentclass{article}
+		\\begin{document}
+		Hello World!
+		\\end{document}`
+
+	test('miktex is present', () => {
+		const miktexExists = fs.existsSync('miktex')
+		expect(miktexExists).toBe(true)
+	})
+	
+	test('miktex is executable', () => {
+		fs.mkdirSync('testMiktex')
+		const location = path.join(process.cwd(),'testMiktex','test.tex')
+		fs.writeFileSync(location,testLatex)
+		const result = compile(location)
+		expect(result).toContain('Output written on test.pdf')
+		expect(fs.existsSync('test.pdf')).toBe(true)
+		const latexFiles = ['test.aux','test.log','test.pdf']
+		for (const file of latexFiles) {
+			expect(fs.existsSync(file)).toBe(true)
+			fs.unlinkSync(file)
+		}
+		fs.rmSync('testMiktex',{recursive:true})
+	})
+})
+
+describe('compileLatexPDF', () => {
+	let result = ""
+	const directory = 'C:/cdomtextest'
+	const paperLocation = path.join(directory, clientDirectory, 'paper.tex')
+	const styleLocation = path.join(directory, clientDirectory, 'style.tex')
+	const targetLocation = path.join(directory, clientDirectory)
+	const originalDir = process.cwd()
+
+	beforeAll(() => {
+		const testLatex = "hello there"
+		fs.mkdirSync(directory, { recursive: true })
+		createClientFilesystem(directory)
+		fs.writeFileSync(paperLocation,testLatex)
+		for (const type of metadataTypes) {
+			const location = path.join(directory, metadataLocation, type + '.tex')
+			fs.writeFileSync(location,`this is ${type}`)
+		}
+	})
+
+	test('i set up the test files correctly', () => {
+		expect(fs.existsSync(paperLocation)).toBe(true)
+		expect(fs.existsSync(styleLocation)).toBe(true)
+	})
+	
+	test('style.tex compiles', () => {
+		try {
+			result = compileLatexPDF(directory, styleLocation, targetLocation)
+		} finally {
+			const log = fs.readFileSync(path.join(directory, clientDirectory, 'style.log'), 'utf8')
+			// console.log(log)
+			expect(result).toContain('Output written on style.pdf')
+		}
+	})
+
+        const latexFiles = ['style.aux','style.log','style.pdf']
+	test('latex files are created', () => {
+		for (const file of latexFiles) {
+			const fileLocation = path.join(directory, clientDirectory, file)
+			expect(fs.existsSync(fileLocation)).toBe(true)
+		}
+	})
+
+	afterAll(() => {
+		process.chdir(originalDir)
+	})
+})
+
+const { ipcRenderer } = require('electron');
+const { displayFootnotes } = require('./displayFootnotes.js');
+const { switchToFootnotes } = require('./switchToFootnotes.js');
+const { switchToParagraphs } = require('./switchToParagraphs.js');
+
+function onLoad(getFootnotes,getParagraphs) {
+	const compileLatexButton = document.getElementById('compile-latex-button');
+	compileLatexButton.addEventListener('click', () => {
+		ipcRenderer.send('compile-latex-pdf','hello')
+	});
+
+	const recompileLatexButton = document.getElementById('recompile-latex-button');
+	recompileLatexButton.addEventListener('click', () => {
+		ipcRenderer.send('recompile-latex-pdf','hello')
+	});
+
+	const footnotesButton = document.getElementById('footnotes-button')
+	footnotesButton.addEventListener('click',() => {
+		switchToFootnotes(getFootnotes(), displayFootnotes)
+	})
+
+	const paragraphsButton = document.getElementById('paragraphs-button')
+	paragraphsButton.addEventListener('click',() => {
+		switchToParagraphs(getParagraphs())
+	})
+}
+
+exports.onLoad = onLoad;
+const { ipcRenderer } = require('electron')
+
+ipcRenderer.on('potential-paragraphs', (event, arg) => {
+	const potentialParagraphsContainer = document.getElementById('potential-paragraphs-container')
+	potentialParagraphsContainer.innerHTML = ''
+	const header = document.createElement('h2')
+	const prompt = arg.index === null ? `Choose a paragraph` : `Choose paragraph ${arg.index}`
+	header.innerText = prompt
+	potentialParagraphsContainer.appendChild(header)
+
+	createPotentialParagraphs(arg.paragraphs).forEach((element) => {
+		potentialParagraphsContainer.appendChild(element)
+	})
+})
+
+function createPotentialParagraphs(potentialParagraphs) {
+	const elements = []
+	potentialParagraphs.forEach((paragraph) => {
+		const element = document.createElement('div')
+		element.className = 'potential-paragraph'
+		element.innerHTML = paragraph
+
+		element.addEventListener('click', () => {
+			chooseParagraph(paragraph)
+		})
+
+		elements.push(element)
+	})
+	return elements
+}
+
+function chooseParagraph(paragraph) {
+	ipcRenderer.send('paragraph-chosen', { paragraph: paragraph })
+}
+const { contextBridge, ipcRenderer } = require('electron');
+const { onLoad } = require('./onLoad.js')
+const { displayFootnotes } = require('./displayFootnotes.js')
+const { displayParagraphs } = require('./displayParagraphs.js')
+const { displayMetadata } = require('./displayMetadata.js');
+const { switchToParagraphs } = require('./switchToParagraphs.js');
+
+let footnotes = [];
+let paragraphs = [];
+let paperContainer = null
+let metadataPaperContainer = null
+
+function getFootnotes() {
+	return footnotes;
+}
+
+function getParagraphs() {
+	return paragraphs;
+}
+
+window.addEventListener('DOMContentLoaded',() => {
+        paperContainer = document.getElementById('paper-container');
+	
+});
+
+contextBridge.exposeInMainWorld('electronAPI', {
+	closeWindow: () => ipcRenderer.send('hello', 'close'),
+	compileLatexPDF: () => ipcRenderer.send('compile-latex-pdf','hello')
+});
+
+ipcRenderer.on('paper', (event, arg) => {
+	paperContainer = document.getElementById('paper-container');
+	paperContainer.innerHTML = arg.text;
+	footnotes = arg.footnotes;
+	paragraphs = arg.paragraphs;
+
+	displayMetadata(arg.metadata);
+
+	displayFootnotes(footnotes, paperContainer);
+
+	const paragraphsContainer = document.getElementById('paragraphs-container');
+	if (paragraphsContainer !== null) {
+		displayParagraphs(paragraphs, paragraphsContainer);
+	}
+})
+
+window.addEventListener('resize', () => {
+	displayFootnotes(footnotes, paperContainer);
+})
+
+document.addEventListener('DOMContentLoaded', () => {
+	onLoad(getFootnotes,getParagraphs);
+});
+const { ipcRenderer } = require('electron');
+document.addEventListener('DOMContentLoaded', async () => {
+	const openDirectoryButton = document.getElementById('open-directory-button');
+
+	let directory;
+
+	openDirectoryButton.addEventListener('click', async () => {
+		ipcRenderer.send('pick-directory');
+	})
+
+	ipcRenderer.on('directory-picked', async (event, args) => {
+		directory = args.directory;
+		openDirectoryButton.innerText = directory;
+		console.log(args);
+	})
+
+	const openFormatterButton = document.getElementById('open-formatter-button');
+
+	openFormatterButton.addEventListener('click', async () => {
+		if (!directory) {
+			alert(`Please select a directory first. Cdomtex needs to know
+				where your paper is.`);
+			return;
+		}
+		ipcRenderer.send('open-formatter',{ directory: directory });
+	})
+
+})
+function replaceFootnoteHtml(text,data) {
+	let code = "";
+	let i = data.counter
+	if (text[i] != '^') {
+		throw new Error("Error: replaceFootnote called on non-footnote");
+	}
+	i++;
+	while (i < text.length && !(['\n','\r','\t',' ','<','\\'].includes(text[i]))) {
+		code += text[i];
+		i++;
+	}
+
+	const num = data.footnotes.length + 1
+	data.footnotes.push(code);
+	
+	return {
+		before: "^" + code,
+	        after: "<sup>" + num + "</sup>"
+	}
+}
+
+function replaceFootnoteLatex(text,data) {
+	let code = "";
+	let i = data.counter
+	if (text[i] != '^') {
+		throw new Error("Error: replaceFootnote called on non-footnote");
+	}
+	i++;
+	while (i < text.length && !(['\n','\r','\t',' ','<','\\'].includes(text[i]))) {
+		code += text[i];
+		i++;
+	}
+	let footnoteText = `ERROR: Footnote ${code} not found`
+	for(const footnote of data.footnotes) {
+		if (footnote.code == code) {
+			footnoteText = footnote.text;
+		}
+	}
+
+	console.log(`setting footnote ${code} to ${footnoteText}`)
+	return {
+		before: "^" + code,
+		after: "\\footnote{" + footnoteText + "}"
+	}
+}
+
+exports.replaceFootnoteHtml = replaceFootnoteHtml;
+exports.replaceFootnoteLatex = replaceFootnoteLatex;
+function replaceNewlineLatex(text,data) {
+	if(text[data.counter] != "\n") {
+		throw new Error("Error: replaceNewlineLatex called on non-newline");
+	}
+	if(data.inBlockQuote && data.counter + 1 < text.length && !(["\n","\r"].includes(text[data.counter+1]))) {
+		return {
+			before: "\n",
+			after: "\n\\newline\\indent "
+		}
+	} else {
+		return {
+			before: "\n",
+			after: "\n"
+		}
+	}
+}
+
+exports.replaceNewlineLatex = replaceNewlineLatex
+const { footnotesLocation } = require('./locations.js')
+const path = require('path')
+const fs = require('fs')
+
+function saveFootnote(directory, code, text) {
+	const location = path.join(directory, footnotesLocation, code)
+	fs.writeFileSync(location, text)
+}
+
+exports.saveFootnote = saveFootnote
+const path = require('path');
+const fs = require('fs');
+const { metadataLocation } = require('./locations.js');
+
+function saveMetadatum(directory, id, text) {
+	fs.writeFileSync(path.join(directory, metadataLocation, id), text);
+}
+
+exports.saveMetadatum = saveMetadatum;
+const { paragraphsLocation } = require('./locations.js')
+const path = require('path')
+const fs = require('fs')
+
+function saveParagraphs(directory,paragraphs) {
+	const location = path.join(directory,paragraphsLocation,'paragraphs.json')
+	const paragraphsJson = JSON.stringify(paragraphs)
+	fs.writeFileSync(location,paragraphsJson)
+}
+
+exports.saveParagraphs = saveParagraphs
+const { saveParagraphs } = require('./saveParagraphs')
+const { loadParagraphs } = require('./loadParagraphs')
+const { loadParagraphText } = require('./loadParagraphText')
+const { paragraphsLocation } = require('./locations')
+const { createClientFilesystem } = require('./createClientFilesystem')
+
+const path = require('path')
+const fs = require('fs')
+
+describe('paragraphs', () => {
+
+	const paragraphs = ['uwu.txt','test.txt']
+	beforeAll(() => {
+		fs.mkdirSync('paragraphsTest')
+		createClientFilesystem('paragraphsTest')
+		saveParagraphs('paragraphsTest',paragraphs)
+		for(const paragraph of paragraphs) {
+			fs.writeFileSync(path.join('paragraphsTest',paragraph),`test_${paragraph}`)
+		}
+	})
+
+	test('paragraphs.json is created', () => {
+		const location = path.join('paragraphsTest',paragraphsLocation,'paragraphs.json')
+		expect(fs.existsSync(location)).toEqual(true)
+	})
+
+	test('paragraphs.json contains the correct data', () => {
+		const location = path.join('paragraphsTest',paragraphsLocation,'paragraphs.json')
+		expect(fs.readFileSync(location,'utf8')).toEqual(JSON.stringify(paragraphs))
+	})
+
+	test('paragraphs.json can be loaded', () => {
+		const location = 'paragraphsTest'
+		expect(loadParagraphs(location)).toEqual(paragraphs)
+	})
+
+	test('paragraph content can be loaded', () => {
+		const paragraphs = loadParagraphs('paragraphsTest')
+		const paragraphsText = loadParagraphText('paragraphsTest',paragraphs)
+		expect(paragraphsText).toEqual(['test_uwu.txt','test_test.txt'])
+	})
+
+	afterAll(() => {
+		fs.rmSync('paragraphsTest',{ recursive: true })
+	})
+})
+const fs = require('fs');
+const path = require('path');
+const { footnotesLocation } = require('./locations.js')
+
+function saveParsedFootnotes(directory,footnotes) {
+	fs.writeFileSync(path.join(directory,footnotesLocation,"footnotes.json"), JSON.stringify(footnotes));
+
+	for (const footnote of footnotes) {
+		const footnotePath = path.join(directory,footnotesLocation,footnote);
+		if(!fs.existsSync(footnotePath)) {
+			fs.writeFileSync(footnotePath,``);
+		}
+	}
+}
+
+exports.saveParsedFootnotes = saveParsedFootnotes;
+const { saveParsedFootnotes } = require('./saveParsedFootnotes.js');
+const { footnotesLocation } = require('../storage/locations.js')
+const { createClientFilesystem } = require('../storage/createClientFilesystem.js');
+const fs = require('fs');
+const path = require('path');
+
+describe('saveParsedFootnotes', () => {
+	const footnotes = ['a', 'b', 'cdf'];
+	const directory = path.join(process.cwd(),'footnotesSaveTest')
+
+	beforeAll(() => {
+		fs.mkdirSync(directory)
+		createClientFilesystem(directory)
+		saveParsedFootnotes(directory, footnotes)
+	})
+
+	test('creates footnotes json file', () => {
+		expect(fs.existsSync(path.join(directory, footnotesLocation, 'footnotes.json'))).toBe(true)
+	})
+
+	test('creates one file for each footnote', () => {
+		expect(fs.readdirSync(path.join(directory, footnotesLocation)).length).toBe(footnotes.length+1)
+	})
+
+	test('footnote files have correct names', () => {
+		const files = fs.readdirSync(path.join(directory, footnotesLocation))
+		for (const footnote of footnotes) {
+			expect(files).toContain(footnote)
+		}
+	})
+
+	test('do not create new footnote files if they already exist', () => {
+		saveParsedFootnotes(directory, footnotes)
+		expect(fs.readdirSync(path.join(directory, footnotesLocation)).length).toBe(footnotes.length+1)
+	})
+
+	test('do not erase footnote files that already have content', () => {
+		const file = path.join(directory, footnotesLocation, footnotes[0])
+		fs.writeFileSync(file, 'content')
+		saveParsedFootnotes(directory, footnotes)
+		expect(fs.readFileSync(file, 'utf-8')).toBe('content')
+	})
+
+	afterAll(() => {
+		fs.rmSync(directory, { recursive: true })
+	})
+})
+const { ipcRenderer } = require('electron');
+
+function sendMetadatum(id, text) {
+	ipcRenderer.send('update-metadatum', { id: id, text: text });
+}
+
+exports.sendMetadatum = sendMetadatum;
+const { ipcRenderer } = require('electron');
+
+function sendParagraphs(paragraphs) {
+	ipcRenderer.send('update-paragraphs',{ paragraphs: paragraphs })
+}
+
+exports.sendParagraphs = sendParagraphs;
+function splitByEmptyLines(text) { 
+	const regex = /\r?\n\r?\n/;
+	const split = text.split(regex);
+	return split
+}
+
+exports.splitByEmptyLines = splitByEmptyLines;
+const { splitByEmptyLines } = require('./splitByEmptyLines');
+
+describe('splitByEmptyLines', () => {
+	const windowsNewLine = `hello there
+
+there was a gap above this`
+
+	const explicitWindowsNewLine = `hello there\r\n\r\nthere was a gap above this`
+
+	const linuxNewLine = `hello there\n\nthere was a gap above this`
+
+	test('splits by empty lines for just multi-line string', () => {
+		const split = splitByEmptyLines(windowsNewLine);
+		expect(split.length).toBe(2);
+		expect(split[0]).toBe('hello there');
+		expect(split[1]).toBe('there was a gap above this');
+	})
+
+	test('splits by empty lines for explicit multi-line string', () => {
+		const split = splitByEmptyLines(explicitWindowsNewLine);
+		expect(split.length).toBe(2);
+		expect(split[0]).toBe('hello there');
+		expect(split[1]).toBe('there was a gap above this');
+	})
+})
+ %paperstyle for cdom papers
+\documentclass[12pt]{article}
+
+\usepackage{xcolor}
+\colorlet{RED}{red}
+
+\usepackage{geometry}
+\geometry{margin=1in}
+
+\usepackage{setspace}
+
+\usepackage{fancyhdr}
+\pagestyle{fancy}
+\fancyhf{}
+\setlength{\headheight}{15pt}
+\renewcommand{\headrulewidth}{0pt}
+\fancypagestyle{firstpage} {% get rid of page number on first page
+	\fancyhf{}
+}
+\fancyhead[R]{\thepage}
+
+\setlength{\parindent}{3em}
+\setlength{\footnotesep}{12pt}
+
+\vspace{30px}
+
+\newcommand{\Q}[1]{
+	\vspace{-0.5\baselineskip}
+	\begin{singlespace}
+		{\noindent #1}
+	\end{singlespace}
+	\vspace{-0.5\baselineskip}
+}
+\newcommand{\q}[1]{``#1''}
+
+\def\b{%
+	\singlespacing%
+	\vskip\baselineskip%
+	\noindent%
+	\hangindent=1.5em%
+}
+
+\sfcode`\.=1000 % only one space after periods
+
+\usepackage{times}
+
+\begin{document}
+
+\thispagestyle{firstpage}
+
+\begin{singlespace}
+	\input{metadata.tex}
+\end{singlespace}
+
+\doublespacing
+\input{paper.tex}
+
+\end{document}
+.potential-paragraph { 
+	cursor: pointer;
+	padding: 5px;
+	margin-top: 5px;
+	border: 1px solid black;
+}
+:root {
+	font-size: 12pt;
+}
+
+#paper-and-controls-container {
+	display: flex;
+	justify-content: space-between;
+}
+
+#metadata-paper-container {
+	width: 75%;
+	margin: 20px;
+}
+
+#metadata-container .center-metadata {
+	text-align: center;
+	margin-top: 10px;
+	margin-bottom: 10px;
+}
+
+#paper-container {
+	line-height: 1.5;
+}
+
+#controls-container {
+	width: 25vw;
+}
+
+#paper-container sup {
+	font-size: 0.6em;
+}
+
+#paper-container .block-quote-inner {
+	line-height: 1.25;
+	margin-top: -15px;
+	margin-left: 30px;
+	margin-bottom: 10px;
+	background: white;
+	white-space: pre-line;
+}
+
+#paper-container p {
+	text-indent: 2em;
+}
+
+#footnotes-paragraphs-controller {
+	z-index: 2000;
+	background: white;
+	border: 1px solid black;
+	width: 23vw;
+	padding-top: 10px;
+	padding-bottom: 10px;
+	position: fixed;
+	display: flex;
+	justify-content: space-around;
+}
+
+#new-paragraph-button-container {
+	margin-top: 50px;
+	z-index: 2000;
+	background: white;
+	border: 1px solid black;
+	width: 23vw;
+	padding-top: 10px;
+	padding-bottom: 10px;
+	position: fixed;
+	display: flex;
+	justify-content: space-around;
+}
+
+#paragraphs-container {
+	margin-top: 100px;
+	position: fixed;
+}
+
+.footnote-holder {
+	width: 22vw;
+	box-sizing: border-box;
+}
+
+.footnote-element {
+	width: 100%;
+	margin-bottom: 5px;
+	border: 1px solid black;
+	padding: 4px;
+	position: relative;
+	background: white;
+}
+
+.footnote-element .footnote-number-and-text {
+	width: 100%;
+	height: 20px;
+	background: #f0f0f0;
+}
+
+.footnote-element .footnote-code-and-text {
+	width: 100%;
+}
+
+.footnote-element.editing {
+	z-index: 1000;
+	background: #f0f0f0;
+}
+
+[contenteditable] {
+	outline: none;
+}
+
+.paragraph {
+	cursor: pointer;
+	margin-top: 20px;
+	display: grid;
+	grid-template-columns: 1fr 25px 25px;
+	width: 22vw;
+	height: 50px;
+}
+
+.paragraph .paragraph-name {
+	text-align: center;
+}
+
+.paragraph .arrow {
+	box-sizing: border-box;
+	height: 25px;
+	width: 25px;
+	font-size: 20px;
+	border: 1px solid black;
+	text-align: center;
+}
+
+.paragraph .edit-button {
+	height: 25px;
+	text-align: center;
+}
+
+.paragraph .delete-button {
+	height: 25px;
+	text-align: center;
+}
+
+.bibliography {
+	text-align: center;
+	margin-top: 50px;
+	margin-bottom: -35px;
+}
+
+.single-line-break {
+	height: 10px;
+	margin: 0;
+	background: #f0f0f0;
+}
+body {
+	font-family: 'Times New Roman', Times, serif;
+	font-size: 12pt;
+	padding: 20px;
+}
+
+h3 {
+	padding: 0;
+	margin: 0;
+	width: 40%;
+}
+
+.step-title {
+	display: flex;
+	justify-content: space-between;
+}
+
+#welcome {
+	margin-bottom: 20px;
+	border: 2px solid black;
+	padding: 20px;
+}
+
+#logo {
+	margin: 0;
+}
+
+.instructions {
+	padding: 20px;
+	margin: 0;
+}
+
+button {
+	font-family: 'Times New Roman', Times, serif;
+	font-size: 12pt;
+}
+
+code {
+	font-weight: bold;
+}
+
+.footer {
+	margin: 0px;
+	font-family: monospace;
+	font-weight: bold;
+	font-size: 10pt;
+}
+
+sup {
+	font-size: 6pt;
+}
+function switchToFootnotes(footnotes, displayFootnotes) {
+	const footnotesParagraphsContainer = document.getElementById('footnotes-paragraphs-container')
+	footnotesParagraphsContainer.innerHTML = ''
+	const footnotesContainer = document.createElement('div')
+	footnotesContainer.id = 'footnotes-container'
+	footnotesParagraphsContainer.appendChild(footnotesContainer)
+	const paperContainer = document.getElementById('paper-container')
+	displayFootnotes(footnotes, paperContainer)
+}
+
+exports.switchToFootnotes = switchToFootnotes
+/*
+ * @jest-environment jsdom
+ */
+
+const { switchToFootnotes } = require('./switchToFootnotes');
+const { switchToParagraphs } = require('./switchToParagraphs');
+
+describe('switching', () => {
+	const fakeSendParagraphs = jest.fn()
+
+	beforeEach(() => {
+		document.body.innerHTML = `
+		<div id="footnotes-paragraphs-container">
+		    <div id="footnotes-container">
+		</div>
+		`;
+	})
+
+	test('switching should remove the opposite container', () => {
+		switchToParagraphs([], () => {}, fakeSendParagraphs)
+		expect(document.getElementById('footnotes-container')).toBeNull()
+		switchToFootnotes([], () => {})
+		expect(document.getElementById('paragraphs-container')).toBeNull()
+	})
+
+	test('switching should add correct container', () => {
+		switchToParagraphs([], () => {}, fakeSendParagraphs)
+		expect(document.getElementById('paragraphs-container')).not.toBeNull()
+		switchToFootnotes([], () => {})
+		expect(document.getElementById('footnotes-container')).not.toBeNull()
+	})
+
+	test('switching to footnotes should call displayFootnotes', () => {
+		const displayFootnotes = jest.fn()
+		switchToFootnotes([], displayFootnotes)
+		expect(displayFootnotes).toHaveBeenCalled()
+	})
+
+})
+const { displayParagraphs } = require('./displayParagraphs.js')
+const { sendParagraphs } = require('./sendParagraphs.js')
+const { chooseParagraph } = require('./choooseParagraph.js')
+
+function switchToParagraphs(paragraphs, sendParagraphsInternal = sendParagraphs) {
+	// the default parameter is for testing purposes
+	
+	const footnotesParagraphsContainer = document.getElementById('footnotes-paragraphs-container')
+	footnotesParagraphsContainer.innerHTML = ''
+
+	const paragraphsControlsContainer = document.createElement('div')
+	paragraphsControlsContainer.id = 'paragraphs-controls-container'
+
+	const newParagraphButtonContainer = document.createElement('div')
+	newParagraphButtonContainer.id = 'new-paragraph-button-container'
+
+	const newParagraphButton = document.createElement('button')
+	newParagraphButton.id = 'new-paragraph-button'
+	newParagraphButton.innerHTML = 'New Paragraph'
+	newParagraphButton.addEventListener('click', () => {
+		chooseParagraph(null)
+	})
+
+	newParagraphButtonContainer.appendChild(newParagraphButton)
+	paragraphsControlsContainer.appendChild(newParagraphButtonContainer)
+
+	footnotesParagraphsContainer.appendChild(paragraphsControlsContainer)
+
+
+	const paragraphsContainer = document.createElement('div')
+	paragraphsContainer.id = 'paragraphs-container'
+	displayParagraphs(paragraphs, paragraphsContainer)
+	footnotesParagraphsContainer.appendChild(paragraphsContainer)
+	sendParagraphsInternal(paragraphs)
+}
+	
+exports.switchToParagraphs = switchToParagraphs
+const { replacements } = require('./htmlReplacements.js');
+
+function txtToHtml(text) {
+	let normalCharacter = true;
+	let html = ""
+	const data = { 
+		footnotes: [],
+		counter: 0,
+		inItalics: false
+	}
+
+	function makeReplacement(replacement) {
+		if(replacement.createReplacement === undefined) {
+			return replace(replacement)
+		} else {
+			return replace(replacement.createReplacement(text,data))
+		}
+	}
+
+	function replace(replacement) {
+		const replacementLength = replacement.before.length
+		const begin = data.counter
+		const end = data.counter+replacementLength
+		const substring = text.substring(begin,end)
+		if(substring === replacement.before) { 
+			html += replacement.after
+			data.counter += replacementLength-1
+			return true
+		}
+		return false
+	}
+	 
+	function checkBeginningKey(key) {
+		for (let k in replacements[key]) {
+			const replacementFound = makeReplacement(replacements[key][k])
+			if(replacementFound) {
+				normalCharacter = false;
+				break
+			}
+		}
+	}
+
+	for (data.counter = 0; data.counter < text.length; data.counter++) {
+
+		const c = text[data.counter];
+
+		for (let key in replacements) {
+			if (c === key) {
+				checkBeginningKey(key)
+			}
+		}
+
+		if (normalCharacter) {
+			html += c
+		} else {
+			normalCharacter = true;
+		}
+	}
+
+	return { html: html, footnotes: data.footnotes }
+}
+
+exports.txtToHtml = txtToHtml;
+const { txtToHtml } = require('./txtToHtml');
+const { txtToLatex } = require('./txtToLatex');
+const { Footnote } = require('../paper/Footnote');
+const fs = require('fs');
+const path = require('path');
+
+describe('txtToHtml', () => {
+	const directories = fs.readdirSync(path.join(process.cwd(),'/html/test')) 
+	for (let directory of directories) {
+		const beforeText = fs.readFileSync(`./html/test/${directory}/text`, 'utf8');
+		const afterHtml = fs.readFileSync(`./html/test/${directory}/html`, 'utf8');
+		const afterLatex = fs.readFileSync(`./html/test/${directory}/latex`, 'utf8');
+		const { html, footnotes } = txtToHtml(beforeText);
+		const footnoteObjects = footnotes.map(footnote => new Footnote(footnote.id, "This is footnote "+footnote.id));
+		const { latex } = txtToLatex(beforeText, footnoteObjects);
+
+		test(directory, () => {
+			expect(html).toBe(afterHtml);
+			expect(latex).toBe(afterLatex);
+		})
+
+		const caretCount = beforeText.split('').filter(char => char === '^').length;
+		test(`${directory} test has right number of footnotes`, () => {
+			expect(footnotes.length).toBe(caretCount);
+		})
+	}
+
+	test('footnotes get replaced in html', () => {
+		const beforeText = 'This is a test^oooa';
+		const afterHtml = 'This is a test<sup>1</sup>';
+		const { html } = txtToHtml(beforeText);
+		expect(html).toBe(afterHtml);
+	})
+
+	test('footnotes get replaced in latex', () => {
+		const beforeText = 'This is a test.^oooa';
+		const afterLatex = 'This is a test.\\footnote{test footnote}'
+		const footnoteObjects = [new Footnote('oooa', 'test footnote')];
+		const { latex } = txtToLatex(beforeText, footnoteObjects);
+		expect(latex).toBe(afterLatex);
+	})
+
+	test('footnotes get replaced in latex, and in-footnote replacements work', () => {
+		const beforeText = 'This is a test.^oooa';
+		const afterLatex = 'This is a test.\\footnote{Test Author, \\q{Test Title}, \\textit{Test Journal}}'
+		const footnoteObjects = [new Footnote('oooa','Test Author, "Test Title", _Test Journal_')];
+		const { latex } = txtToLatex(beforeText, footnoteObjects);
+		expect(latex).toBe(afterLatex);
+	})
+})
+ const { replacements } = require('./latexReplacements.js');
+
+function txtToLatex(text,footnotes) {
+	let html = "";
+	let normalCharacter = true;
+	const data = {
+		counter: 0,
+		footnotes: footnotes,
+		inQuote: false,
+		inBlockQuote: false,
+		inItalics: false,
+	}
+
+	function makeReplacement(replacement) {
+		if(replacement.createReplacement === undefined) {
+			return replace(replacement)
+		} else {
+			return replace(replacement.createReplacement(text,data))
+		}
+	}
+
+	function replace(replacement) {
+		const replacementLength = replacement.before.length
+		const begin = data.counter
+		const end = data.counter+replacementLength
+		const substring = text.substring(begin,end)
+		if(substring === replacement.before) { 
+			html += replacement.after
+			data.counter += replacementLength-1
+			return true
+		}
+		return false
+	}
+	
+	function checkBeginningKey(key) {
+		for (let k in replacements[key]) {
+			const replacementFound = makeReplacement(replacements[key][k])
+			if(replacementFound) {
+				normalCharacter = false;
+				break
+			}
+		}
+	}
+
+	for(const footnote of data.footnotes) {
+		footnote.text = txtToLatex(footnote.text,[]).latex
+	}
+
+	for (data.counter = 0; data.counter < text.length; data.counter++) {
+
+		const c = text[data.counter];
+
+		for (let key in replacements) {
+			if (c === key) {
+				checkBeginningKey(key)
+			}
+		}
+
+		if (normalCharacter) {
+			html += c
+		} else {
+			normalCharacter = true;
+		}
+	}
+
+	if (data.inQuote) {
+		throw new Error("Missing closing double quote")
+	}
+	if (data.inBlockQuote) {
+		throw new Error("Missing closing block quote")
+	}
+	if (data.inItalics) {
+		throw new Error("Missing closing italics")
+	}
+
+	return { latex: html }
+}
+
+exports.txtToLatex = txtToLatex;
+
+const path = require('path')
+const fs = require('fs')
+
+const { getPotentialParagraphs } = require('./getPotentialParagraphs.js')
+
+const { BrowserWindow, ipcMain } = require('electron')
+
+function chooser(index, directory) {
+
+	const chooseParagraphWindow = new BrowserWindow({
+		width: 800,
+		height: 600,
+		webPreferences: {
+			preload: path.join(__dirname, 'preloadChooser.js'),
+			nodeIntegration: true
+		}
+	})
+
+	chooseParagraphWindow.loadFile(path.join(__dirname,'htmlChooser.html'))
+	chooseParagraphWindow.webContents.send('potential-paragraphs',{ paragraphs: getPotentialParagraphs(directory), index: index })
+
+	return chooseParagraphWindow
+
+}
+
+exports.chooser = chooser
+const { ipcMain, BrowserWindow } = require('electron')
+const path = require('path')
+const child_process = require('child_process')
+const fs = require('fs')
+const { loadPaper } = require('./loadPaper.js')
+const { createClientFilesystem } = require('./createClientFilesystem.js')
+const { FileManager } = require('./FileManager.js')
+const { saveParagraphs } = require('./saveParagraphs.js')
+const { loadParagraphs } = require('./loadParagraphs.js')
+const { loadParagraphText } = require('./loadParagraphText.js')
+const { saveFootnote } = require('./saveFootnote.js')
+const { assembleFootnotes } = require('./assembleFootnotes.js')
+const { assemblePaper } = require('./assemblePaper.js')
+const { saveMetadatum } = require('./saveMetadatum.js')
+const { loadMetadata } = require('./loadMetadata.js')
+const { txtToLatex } = require('./txtToLatex.js')
+const { compileMetadataLatex } = require('./compileMetadataLatex.js')
+const { compileLatexPDF } = require('./compileLatexPDF.js')
+
+const { chooser } = require('./windowChooser.js')
+
+function formatter(directory) {
+	const win = new BrowserWindow({
+		width: 900,
+		height: 1000,
+		x: 0,
+		y: 0,
+		webPreferences: {
+			preload: path.join(__dirname, 'preloadFormatter.js'),
+			nodeIntegration: true
+		}
+	})
+
+	win.loadFile(path.join(__dirname,'htmlFormatter.html'))
+
+	function sendPaper() {
+		win.webContents.send('paper', loadPaper(directory))
+	}
+
+	createClientFilesystem(directory)
+
+	sendPaper()
+	const fm = new FileManager(directory,sendPaper,100)
+	fm.updateWatched(loadParagraphs(directory))
+
+
+	ipcMain.on('compile-latex-pdf', (event, arg) => {
+		console.log('backend is compiling latex pdf')
+		const paragraphNames = loadParagraphs(directory)
+		const paragraphText = loadParagraphText(directory,paragraphNames)
+		const text = assemblePaper(paragraphText, {start: "", end: "\\par "})
+		const assembledFootnotes = assembleFootnotes(directory)
+		compileMetadataLatex(directory)
+		const { latex } = txtToLatex(text,assembledFootnotes)
+		fs.writeFileSync(path.join(directory,"!cdomtex","paper.tex"),latex)
+		const styleLocation = path.join(directory,'!cdomtex','style.tex')
+		const success = compileLatexPDF(directory,styleLocation)
+		if (success) {
+			const originalPDFLocation = path.join(directory,'!cdomtex','style.pdf')
+			const title = loadMetadata(directory).title.replace(/ /g,'_').toLowerCase() + '.pdf'
+
+			const finalPDFLocation = path.join(directory,title)
+			fs.copyFileSync(originalPDFLocation,finalPDFLocation)
+			child_process.exec(`start ${finalPDFLocation}`)
+		}
+	})
+
+	ipcMain.on('recompile-latex-pdf', (event, arg) => {
+		console.log('backend is recompiling existing latex pdf')
+		const styleLocation = path.join(directory,'!cdomtex','style.tex')
+		const success = compileLatexPDF(directory, styleLocation)
+		if (success) {
+			const originalPDFLocation = path.join(directory,'!cdomtex','style.pdf')
+			const title = loadMetadata(directory).title.toLowerCase().replace(/ /g,'_') + '.pdf'
+			const finalPDFLocation = path.join(directory,title)
+			fs.copyFileSync(originalPDFLocation,finalPDFLocation)
+			child_process.exec(`start ${finalPDFLocation}`)
+		}
+	})
+
+	ipcMain.on('update-footnote', (event, arg) => {
+		console.log('backend is updating footnote')
+		const { code, text } = arg
+		saveFootnote(directory,code,text)
+		sendPaper()
+	})
+	
+	ipcMain.on('update-paragraphs', (event, arg) => {
+		console.log('backend is updating paragraphs')
+		console.log(arg)
+		const paragraphs = arg.paragraphs
+		console.log('paragraphs',paragraphs)
+		saveParagraphs(directory,paragraphs)
+		fm.updateWatched(paragraphs)
+		sendPaper()
+	})
+
+	ipcMain.on('update-metadatum', (event, arg) => {
+		console.log(`updating metadatum ${arg.id} to ${arg.text}`)
+		saveMetadatum(directory,arg.id,arg.text)
+	})
+
+	let chooseParagraphWindow = {
+		close: () => {throw new Error('chooseParagraphWindow not initialized')}
+	}
+	let paragraphIndex = null
+
+	ipcMain.on('choose-paragraph', (event, arg) => {
+		paragraphIndex = arg.index
+		chooseParagraphWindow = chooser(paragraphIndex, directory)
+	})
+
+	ipcMain.on('paragraph-chosen', (event, arg) => {
+	        chooseParagraphWindow.close()
+		console.log('paragraph chosen',arg.paragraph)
+		const paragraphs = loadParagraphs(directory)
+		if (paragraphIndex === null) {
+			paragraphs.push(arg.paragraph)
+		} else {
+			paragraphs[paragraphIndex-1] = arg.paragraph
+		}
+		saveParagraphs(directory,paragraphs)
+		fm.updateWatched(paragraphs)
+		sendPaper()
+	})
+
+}
+
+exports.formatter = formatter
+const { dialog, ipcMain, BrowserWindow } = require('electron')
+const path = require('path')
+const { formatter } = require('./windowFormatter.js')
+
+function launcher() {
+	const launcherWindow = new BrowserWindow({
+		width: 800,
+		height: 600,
+		webPreferences: {
+			preload: path.join(__dirname,'preloadLauncher.js'),
+			nodeIntegration: true
+		}
+	})
+
+	launcherWindow.loadFile(path.join(__dirname,'htmlLauncher.html'))
+
+	ipcMain.on('open-formatter', (event, arg) => {
+		launcherWindow.close()
+		formatter(arg.directory)
+	})
+ 
+	
+	ipcMain.on('pick-directory', (event, arg) => {
+		const result = dialog.showOpenDialogSync(launcherWindow, {
+			properties: ['openDirectory']
+		})
+		if (!result) {
+			return
+		}
+		launcherWindow.webContents.send('directory-picked', { directory: result[0] })
+	})
+}
+
+exports.launcher = launcher
