@@ -2,9 +2,18 @@
 	--background-color: black;
 	--text-color: white;
 	--tertiary-color: blue;
+	--edit-color: #f0f0f0;
 }
 
 body {
 	background-color: var(--background-color);
 	color: var(--text-color)
+}
+
+button { 
+	font-family: 'Times New Roman', Times, serif;
+	padding: 5px;
+	background-color: var(--background-color);
+	color: var(--text-color);
+	border-color: var(--tertiary-color);
 }

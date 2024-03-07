@@ -1,6 +1,8 @@
+@import url('main.css');
+
 .potential-paragraph { 
 	cursor: pointer;
 	padding: 5px;
 	margin-top: 5px;
-	border: 1px solid black;
+	border: 1px solid var(--tertiary-color);
 }
