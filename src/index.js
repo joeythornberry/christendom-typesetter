@@ -8,6 +8,7 @@ function start(args) {
 
 	if (args.length === 0) {
 		launcher()
+		return
 	}
 
 	for (let arg in args) {
