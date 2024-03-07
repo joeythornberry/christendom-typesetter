@@ -16,6 +16,7 @@ const { loadMetadata } = require('./loadMetadata.js')
 const { txtToLatex } = require('./txtToLatex.js')
 const { compileMetadataLatex } = require('./compileMetadataLatex.js')
 const { compileLatexPDF } = require('./compileLatexPDF.js')
+const { sanitizeTitle } = require('./sanitizeTitle.js')
 
 const { chooser } = require('./windowChooser.js')
 
@@ -57,7 +58,8 @@ function formatter(directory) {
 		const success = compileLatexPDF(directory,styleLocation)
 		if (success) {
 			const originalPDFLocation = path.join(directory,'!cdomtex','style.pdf')
-			const title = loadMetadata(directory).title.replace(/ /g,'_').toLowerCase() + '.pdf'
+			const rawTitle = sanitizeTitle(loadMetadata(directory).title)
+			const title = rawTitle.replace(/ /g,'_').toLowerCase() + '.pdf'
 
 			const finalPDFLocation = path.join(directory,title)
 			fs.copyFileSync(originalPDFLocation,finalPDFLocation)
@@ -71,7 +73,8 @@ function formatter(directory) {
 		const success = compileLatexPDF(directory, styleLocation)
 		if (success) {
 			const originalPDFLocation = path.join(directory,'!cdomtex','style.pdf')
-			const title = loadMetadata(directory).title.toLowerCase().replace(/ /g,'_') + '.pdf'
+			const rawTitle = sanitizeTitle(loadMetadata(directory).title)
+			const title = rawTitle.replace(/ /g,'_').toLowerCase() + '.pdf'
 			const finalPDFLocation = path.join(directory,title)
 			fs.copyFileSync(originalPDFLocation,finalPDFLocation)
 			child_process.exec(`start ${finalPDFLocation}`)
