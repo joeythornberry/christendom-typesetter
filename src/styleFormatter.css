@@ -1,3 +1,5 @@
+@import url("main.css");
+
 :root {
 	font-size: 12pt;
 }
@@ -7,9 +9,22 @@
 	justify-content: space-between;
 }
 
+#paper-controls-container {
+	padding: 20px;
+	width: 100%;
+	background-color: var(--background-color);
+	z-index: 1000;
+	position: fixed;
+	top: 0;
+}
+
 #metadata-paper-container {
 	width: 75%;
 	margin: 20px;
+}
+
+#metadata-container {
+	margin-top: 50px;
 }
 
 #metadata-container .center-metadata {
