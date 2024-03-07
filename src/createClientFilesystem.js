@@ -17,7 +17,7 @@ function createClientFilesystem(directory) {
 		if(!fs.existsSync(metadataPath)) {
 			let text = `${metadatum} here`;
 			if(metadatum === 'date') {
-				text = `\\today`
+				text = `\\today%(automatic)`
 			}
 			fs.writeFileSync(metadataPath, text);
 		}
