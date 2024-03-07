@@ -15,7 +15,7 @@ function createClientFilesystem(directory) {
 	for (const metadatum of metadataTypes) {
 		const metadataPath = path.join(directory, metadataLocation, metadatum);
 		if(!fs.existsSync(metadataPath)) {
-			let text = `${metadatum} here`;
+			let text = `Click to edit ${metadatum}`;
 			if(metadatum === 'date') {
 				text = `\\today%(automatic)`
 			}
