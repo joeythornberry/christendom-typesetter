@@ -5,8 +5,14 @@ const replacements = {
 		"open_block_quotes": {
 			createReplacement: (text, data) => {
 				data.inBlockQuote = true
+				let i = 0
+				let before = "[[["
+				while (["\r","\n"].includes(text[data.counter+3+i])) {
+					before += text[data.counter+3+i]
+					i++
+				}
 				return {
-					before: "[[[",
+					before: before,
 					after: "\\Q{"
 				}
 			}
@@ -16,9 +22,13 @@ const replacements = {
 		"close_block_quotes": {
 			createReplacement: (text, data) => {
 				data.inBlockQuote = false
+				let after = "}"
+				if (!["\n","\r"].includes(text[data.counter-1])){
+					after = "\\newline " + after
+				}
 				return {
 					before: "]]]",
-					after: "}"
+					after: after
 				}
 			}
 		}

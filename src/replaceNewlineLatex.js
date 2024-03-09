@@ -5,7 +5,7 @@ function replaceNewlineLatex(text,data) {
 	if(data.inBlockQuote && data.counter + 1 < text.length && !(["\n","\r"].includes(text[data.counter+1]))) {
 		return {
 			before: "\n",
-			after: "\n\\newline\\indent "
+			after: "\n\\newline "
 		}
 	} else {
 		return {
