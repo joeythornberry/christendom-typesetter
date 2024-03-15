@@ -1,4 +1,8 @@
 function switchToFootnotes(footnotes, displayFootnotes) {
+
+	const footnotesParagraphsLabel = document.getElementById('footnotes-paragraphs-label')
+	footnotesParagraphsLabel.innerHTML = "Footnotes"
+
 	const footnotesParagraphsContainer = document.getElementById('footnotes-paragraphs-container')
 	footnotesParagraphsContainer.innerHTML = ''
 	const footnotesContainer = document.createElement('div')

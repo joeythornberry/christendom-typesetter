@@ -5,6 +5,12 @@ const { chooseParagraph } = require('./choooseParagraph.js')
 function switchToParagraphs(paragraphs, sendParagraphsInternal = sendParagraphs) {
 	// the default parameter is for testing purposes
 	
+	const footnotesParagraphsButton = document.getElementById('footnotes-paragraphs-button')
+	footnotesParagraphsButton.innerHTML = "Edit Footnotes"
+
+	const footnotesParagraphsLabel = document.getElementById('footnotes-paragraphs-label')
+	footnotesParagraphsLabel.innerHTML = "Paragraphs"
+	
 	const footnotesParagraphsContainer = document.getElementById('footnotes-paragraphs-container')
 	footnotesParagraphsContainer.innerHTML = ''
 

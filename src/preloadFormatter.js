@@ -8,6 +8,7 @@ const { switchToParagraphs } = require('./switchToParagraphs.js');
 let footnotes = [];
 let paragraphs = [];
 let paperContainer = null
+let needLoad = false
 let metadataPaperContainer = null
 
 function getFootnotes() {
@@ -42,6 +43,11 @@ ipcRenderer.on('paper', (event, arg) => {
 	if (paragraphsContainer !== null) {
 		displayParagraphs(paragraphs, paragraphsContainer);
 	}
+
+	if (needLoad) {
+		onLoad(getFootnotes, getParagraphs)
+		needLoad = false
+	}
 })
 
 window.addEventListener('resize', () => {
@@ -49,5 +55,5 @@ window.addEventListener('resize', () => {
 })
 
 document.addEventListener('DOMContentLoaded', () => {
-	onLoad(getFootnotes,getParagraphs);
+	needLoad = true
 });
