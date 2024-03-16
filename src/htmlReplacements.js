@@ -4,10 +4,20 @@ const replacements = {
 	'[' : {
 		"open_block_quotes":
 		{
-			before: '[[[',
-			after: '<div class="block-quote-outer"><div class="block-quote-inner">',
+			createReplacement: (text, data) => {
+				let i = 0
+				let before = "[[["
+				while (["\r","\n"].includes(text[data.counter+3+i])) {
+					before += text[data.counter+3+i]
+					i++
+				}
+				return {
+					before: before,
+					after: '<div class="block-quote-outer"><div class="block-quote-inner">',
+				}
+			}
 		}
-			
+
 	},
 	']' : {
 		"close_block_quotes":
