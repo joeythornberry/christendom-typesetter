@@ -19,8 +19,15 @@ const { compileLatexPDF } = require('./compileLatexPDF.js')
 const { sanitizeTitle } = require('./sanitizeTitle.js')
 
 const { chooser } = require('./windowChooser.js')
+const contextMenu = require('electron-context-menu')
 
 function formatter(directory) {
+
+	contextMenu({
+		showSearchWithGoogle: false,
+		showSaveImageAs: false,
+		showInspectElement: false,
+	})
 	const win = new BrowserWindow({
 		width: 900,
 		height: 1000,

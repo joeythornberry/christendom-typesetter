@@ -17,11 +17,12 @@
     "jest-environment-jsdom": "^29.7.0"
   },
   "dependencies": {
+    "electron-context-menu": "^3.6.1",
     "electron-squirrel-startup": "^1.0.0"
   },
   "build": {
-	  "extraResources": [
-		  "./extraResources/*"
-	  ]
+    "extraResources": [
+      "./extraResources/*"
+    ]
   }
 }
