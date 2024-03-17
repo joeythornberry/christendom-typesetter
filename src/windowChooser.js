@@ -1,3 +1,4 @@
+const { Menu } = require('electron')
 const path = require('path')
 const fs = require('fs')
 
@@ -6,6 +7,10 @@ const { getPotentialParagraphs } = require('./getPotentialParagraphs.js')
 const { BrowserWindow, ipcMain } = require('electron')
 
 function chooser(index, directory) {
+
+	const template = [
+	]
+	Menu.setApplicationMenu(Menu.buildFromTemplate(template))
 
 	const chooseParagraphWindow = new BrowserWindow({
 		width: 800,

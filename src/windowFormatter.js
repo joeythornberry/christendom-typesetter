@@ -1,4 +1,4 @@
-const { ipcMain, BrowserWindow } = require('electron')
+const { ipcMain, BrowserWindow, Menu } = require('electron')
 const path = require('path')
 const child_process = require('child_process')
 const fs = require('fs')
@@ -38,6 +38,11 @@ function formatter(directory) {
 			nodeIntegration: true
 		}
 	})
+
+	const template = [
+	]
+	Menu.setApplicationMenu(Menu.buildFromTemplate(template))
+
 
 	win.loadFile(path.join(__dirname,'htmlFormatter.html'))
 
