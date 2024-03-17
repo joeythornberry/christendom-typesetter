@@ -30,9 +30,9 @@ function formatter(directory) {
 	})
 	const win = new BrowserWindow({
 		width: 900,
-		height: 1000,
-		x: 0,
-		y: 0,
+		height: 900,
+		x: 100,
+		y: 50,
 		webPreferences: {
 			preload: path.join(__dirname, 'preloadFormatter.js'),
 			nodeIntegration: true
