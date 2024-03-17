@@ -4,6 +4,10 @@
 	font-size: 12pt;
 }
 
+#theme {
+	border: 1px solid var(--tertiary-color);
+}
+
 #paper-and-controls-container {
 	display: flex;
 	justify-content: space-between;
