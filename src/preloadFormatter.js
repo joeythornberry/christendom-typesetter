@@ -66,4 +66,14 @@ window.addEventListener('resize', () => {
 
 document.addEventListener('DOMContentLoaded', () => {
 	needLoad = true
+	const themeToggle = document.getElementById('theme')
+	themeToggle.addEventListener("change", (e) => {
+		let theme;
+		if (themeToggle.checked === true) {
+			theme = "dark"
+		} else {
+			theme = "light"
+		}
+		ipcRenderer.send("theme",{theme: theme})
+	})
 });

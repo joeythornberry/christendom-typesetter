@@ -21,6 +21,7 @@ const { sanitizeTitle } = require('./sanitizeTitle.js')
 const { chooser } = require('./windowChooser.js')
 const contextMenu = require('electron-context-menu')
 const { loadTheme } = require('./loadTheme.js')
+const { saveTheme } = require('./saveTheme.js')
 
 function formatter(directory) {
 
@@ -132,6 +133,11 @@ function formatter(directory) {
 		saveParagraphs(directory,paragraphs)
 		fm.updateWatched(paragraphs)
 		sendPaper()
+	})
+
+	ipcMain.on('theme', (event,arg) => {
+		saveTheme(arg.theme)
+		win.webContents.send('theme', {theme: loadTheme()}) 
 	})
 
 	win.webContents.send('theme', {theme: loadTheme()}) 
