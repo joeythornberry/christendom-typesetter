@@ -48,6 +48,12 @@ ipcRenderer.on('paper', (event, arg) => {
 		onLoad(getFootnotes, getParagraphs)
 		needLoad = false
 	}
+	
+	const split = arg.text.split(" ")
+	const wordCount = split.length
+	console.log("split:",split)
+	const wordCountElement = document.getElementById('word-count')
+	wordCountElement.innerHTML = `Word Count: ${wordCount}`
 })
 
 window.addEventListener('resize', () => {
