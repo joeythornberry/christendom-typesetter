@@ -1,4 +1,5 @@
 const { ipcRenderer } = require('electron');
+const { setTheme } = require('./setTheme')
 document.addEventListener('DOMContentLoaded', async () => {
 	const openDirectoryButton = document.getElementById('open-directory-button');
 
@@ -23,6 +24,10 @@ document.addEventListener('DOMContentLoaded', async () => {
 			return;
 		}
 		ipcRenderer.send('open-formatter',{ directory: directory });
+	})
+
+	ipcRenderer.on('theme', (event, arg) => {
+		setTheme(arg.theme)
 	})
 
 })

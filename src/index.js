@@ -4,8 +4,6 @@ const { launcher } = require('./windowLauncher.js')
 const { formatter } = require('./windowFormatter.js')
 
 function start(args) {
-	console.log("args:", args)
-
 	if (args.length === 0) {
 		launcher()
 		return

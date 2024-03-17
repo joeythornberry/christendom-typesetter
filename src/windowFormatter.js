@@ -20,6 +20,7 @@ const { sanitizeTitle } = require('./sanitizeTitle.js')
 
 const { chooser } = require('./windowChooser.js')
 const contextMenu = require('electron-context-menu')
+const { loadTheme } = require('./loadTheme.js')
 
 function formatter(directory) {
 
@@ -60,7 +61,6 @@ function formatter(directory) {
 
 
 	ipcMain.on('compile-latex-pdf', (event, arg) => {
-		console.log('backend is compiling latex pdf')
 		const paragraphNames = loadParagraphs(directory)
 		const paragraphText = loadParagraphText(directory,paragraphNames)
 		const text = assemblePaper(paragraphText, {start: "", end: "\\par "})
@@ -82,7 +82,6 @@ function formatter(directory) {
 	})
 
 	ipcMain.on('recompile-latex-pdf', (event, arg) => {
-		console.log('backend is recompiling existing latex pdf')
 		const styleLocation = path.join(directory,'!cdomtex','style.tex')
 		const success = compileLatexPDF(directory, styleLocation)
 		if (success) {
@@ -96,24 +95,19 @@ function formatter(directory) {
 	})
 
 	ipcMain.on('update-footnote', (event, arg) => {
-		console.log('backend is updating footnote')
 		const { code, text } = arg
 		saveFootnote(directory,code,text)
 		sendPaper()
 	})
 	
 	ipcMain.on('update-paragraphs', (event, arg) => {
-		console.log('backend is updating paragraphs')
-		console.log(arg)
 		const paragraphs = arg.paragraphs
-		console.log('paragraphs',paragraphs)
 		saveParagraphs(directory,paragraphs)
 		fm.updateWatched(paragraphs)
 		sendPaper()
 	})
 
 	ipcMain.on('update-metadatum', (event, arg) => {
-		console.log(`updating metadatum ${arg.id} to ${arg.text}`)
 		saveMetadatum(directory,arg.id,arg.text)
 	})
 
@@ -129,7 +123,6 @@ function formatter(directory) {
 
 	ipcMain.on('paragraph-chosen', (event, arg) => {
 	        chooseParagraphWindow.close()
-		console.log('paragraph chosen',arg.paragraph)
 		const paragraphs = loadParagraphs(directory)
 		if (paragraphIndex === null) {
 			paragraphs.push(arg.paragraph)
@@ -140,6 +133,8 @@ function formatter(directory) {
 		fm.updateWatched(paragraphs)
 		sendPaper()
 	})
+
+	win.webContents.send('theme', {theme: loadTheme()}) 
 
 }
 

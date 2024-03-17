@@ -4,6 +4,7 @@ const { displayFootnotes } = require('./displayFootnotes.js')
 const { displayParagraphs } = require('./displayParagraphs.js')
 const { displayMetadata } = require('./displayMetadata.js');
 const { switchToParagraphs } = require('./switchToParagraphs.js');
+const { setTheme } = require('./setTheme.js')
 
 let footnotes = [];
 let paragraphs = [];
@@ -29,6 +30,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
 	compileLatexPDF: () => ipcRenderer.send('compile-latex-pdf','hello')
 });
 
+ipcRenderer.on('theme', (event, arg) => {
+	setTheme(arg.theme)
+})
+
 ipcRenderer.on('paper', (event, arg) => {
 	paperContainer = document.getElementById('paper-container');
 	paperContainer.innerHTML = arg.text;
@@ -51,7 +56,6 @@ ipcRenderer.on('paper', (event, arg) => {
 	
 	const split = arg.text.split(" ")
 	const wordCount = split.length
-	console.log("split:",split)
 	const wordCountElement = document.getElementById('word-count')
 	wordCountElement.innerHTML = `Word Count: ${wordCount}`
 })

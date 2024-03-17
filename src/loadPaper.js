@@ -17,7 +17,6 @@ function loadPaper(directory){
 	const metadata = loadMetadata(directory)
 	const assembledPaper =
 		new Paper(parsed.html, assembledFootnotes, paragraphNames, metadata)
-	console.log(assembledPaper)
 	return assembledPaper
 }
 

@@ -1,6 +1,7 @@
 const { Menu } = require('electron')
 const path = require('path')
 const fs = require('fs')
+const { loadTheme } = require('./loadTheme')
 
 const { getPotentialParagraphs } = require('./getPotentialParagraphs.js')
 
@@ -25,6 +26,8 @@ function chooser(index, directory) {
 
 	chooseParagraphWindow.loadFile(path.join(__dirname,'htmlChooser.html'))
 	chooseParagraphWindow.webContents.send('potential-paragraphs',{ paragraphs: getPotentialParagraphs(directory), index: index })
+
+	chooseParagraphWindow.webContents.send('theme', {theme: loadTheme()}) 
 
 	return chooseParagraphWindow
 

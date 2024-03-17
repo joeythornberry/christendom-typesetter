@@ -2,6 +2,7 @@ const { dialog, ipcMain, BrowserWindow, Menu } = require('electron')
 const path = require('path')
 const { formatter } = require('./windowFormatter.js')
 const { inspect } = require('util')
+const { loadTheme } = require('./loadTheme')
 
 function launcher() {
 	const launcherWindow = new BrowserWindow({
@@ -36,6 +37,8 @@ function launcher() {
 		}
 		launcherWindow.webContents.send('directory-picked', { directory: result[0] })
 	})
+
+	launcherWindow.webContents.send('theme', {theme: loadTheme()}) 
 }
 
 exports.launcher = launcher

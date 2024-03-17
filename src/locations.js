@@ -27,3 +27,9 @@ const paperLocation = path.join(...paperLocationPath)
 
 exports.paperLocationPath = paperLocationPath
 exports.paperLocation = paperLocation
+
+const themeLocationPath = [clientDirectory, 'theme.txt']
+const themeLocation = path.join(...themeLocationPath)
+
+exports.themeLocationPath = themeLocationPath
+exports.themeLocation = themeLocation

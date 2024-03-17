@@ -1,4 +1,5 @@
 const { ipcRenderer } = require('electron')
+const { setTheme } = require('./setTheme')
 
 ipcRenderer.on('potential-paragraphs', (event, arg) => {
 	const potentialParagraphsContainer = document.getElementById('potential-paragraphs-container')
@@ -11,6 +12,10 @@ ipcRenderer.on('potential-paragraphs', (event, arg) => {
 	createPotentialParagraphs(arg.paragraphs).forEach((element) => {
 		potentialParagraphsContainer.appendChild(element)
 	})
+})
+
+ipcRenderer.on('theme', (event, arg) => {
+	setTheme(arg.theme)
 })
 
 function createPotentialParagraphs(potentialParagraphs) {
