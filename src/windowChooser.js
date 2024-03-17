@@ -8,9 +8,11 @@ const { BrowserWindow, ipcMain } = require('electron')
 
 function chooser(index, directory) {
 
-	const template = [
-	]
-	Menu.setApplicationMenu(Menu.buildFromTemplate(template))
+	if (process.env.NODE_ENV !== 'development') {
+		const template = [
+		]
+		Menu.setApplicationMenu(Menu.buildFromTemplate(template))
+	}
 
 	const chooseParagraphWindow = new BrowserWindow({
 		width: 800,

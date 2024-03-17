@@ -39,9 +39,11 @@ function formatter(directory) {
 		}
 	})
 
-	const template = [
-	]
-	Menu.setApplicationMenu(Menu.buildFromTemplate(template))
+	if (process.env.NODE_ENV !== 'development') {
+		const template = [
+		]
+		Menu.setApplicationMenu(Menu.buildFromTemplate(template))
+	}
 
 
 	win.loadFile(path.join(__dirname,'htmlFormatter.html'))

@@ -1,6 +1,7 @@
 const { dialog, ipcMain, BrowserWindow, Menu } = require('electron')
 const path = require('path')
 const { formatter } = require('./windowFormatter.js')
+const { inspect } = require('util')
 
 function launcher() {
 	const launcherWindow = new BrowserWindow({
@@ -12,9 +13,11 @@ function launcher() {
 		}
 	})
 
-	const template = [
-	]
-	Menu.setApplicationMenu(Menu.buildFromTemplate(template))
+	if (process.env.NODE_ENV !== 'development') {
+		const template = [
+		]
+		Menu.setApplicationMenu(Menu.buildFromTemplate(template))
+	}
 
 	launcherWindow.loadFile(path.join(__dirname,'htmlLauncher.html'))
 
