@@ -5,7 +5,7 @@ const { formatter } = require('./windowFormatter.js')
 function launcher() {
 	const launcherWindow = new BrowserWindow({
 		width: 800,
-		height: 600,
+		height: 620,
 		webPreferences: {
 			preload: path.join(__dirname,'preloadLauncher.js'),
 			nodeIntegration: true
