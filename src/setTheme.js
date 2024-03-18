@@ -1,7 +1,5 @@
 function setTheme(theme) {
 	const changes = []
-
-		console.log("setting theme to", theme)
 	if (theme === "light") {
 		changes.push({property: "--background-color", value: "#ffffff"})
 		changes.push({property: "--text-color", value: "#202020"})

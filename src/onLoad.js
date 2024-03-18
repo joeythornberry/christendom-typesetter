@@ -38,10 +38,6 @@ function onLoad(getFootnotes,getParagraphs) {
 	});
 
 	const footnotesParagraphsButton = document.getElementById('footnotes-paragraphs-button')
-	if (!footnotesParagraphsButton) {
-		console.error("footnotesParagraphsButton is null")
-		return
-	}
 
 	// footnotesParagraphsButton.onclick = () => {
 		// switchToFootnotes(getFootnotes(), displayFootnotes,

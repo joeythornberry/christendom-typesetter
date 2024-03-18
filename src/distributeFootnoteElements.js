@@ -1,7 +1,5 @@
 function distributeFootnoteElements(footnotesContainer,locations,footnoteElements) {
 	if (locations.length !== footnoteElements.length) {
-		console.log(locations)
-		console.log(footnoteElements)
 		throw new Error('locations and footnoteElements must be the same length')
 	}
 

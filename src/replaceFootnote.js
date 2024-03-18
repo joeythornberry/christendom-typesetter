@@ -37,7 +37,6 @@ function replaceFootnoteLatex(text,data) {
 		}
 	}
 
-	console.log(`setting footnote ${code} to ${footnoteText}`)
 	return {
 		before: "^" + code,
 		after: "\\footnote{" + footnoteText + "}"

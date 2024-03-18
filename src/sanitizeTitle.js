@@ -1,5 +1,4 @@
 function sanitizeTitle(title) {
-	console.log("title:",title)
 	let output = ""
 	const illegalChars = ['#','%','&','{','}','\\','<','>','*','?','/','$','!',"'",'"',':','@','+','`','|','=','_']
 	for (let i = 0; i < title.length; i++) {

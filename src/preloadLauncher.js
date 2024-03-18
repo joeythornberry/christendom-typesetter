@@ -12,7 +12,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 	ipcRenderer.on('directory-picked', async (event, args) => {
 		directory = args.directory;
 		openDirectoryButton.innerText = directory;
-		console.log(args);
 	})
 
 	const openFormatterButton = document.getElementById('open-formatter-button');
