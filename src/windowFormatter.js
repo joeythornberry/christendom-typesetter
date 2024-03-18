@@ -82,19 +82,19 @@ function formatter(directory) {
 		}
 	})
 
-	ipcMain.on('recompile-latex-pdf', (event, arg) => {
-		const styleLocation = path.join(directory,'!cdomtex','style.tex')
-		const success = compileLatexPDF(directory, styleLocation)
-		if (success) {
-			const originalPDFLocation = path.join(directory,'!cdomtex','style.pdf')
-			const rawTitle = sanitizeTitle(loadMetadata(directory).title)
-			const title = rawTitle.replace(/ /g,'_').toLowerCase() + '.pdf'
-			const finalPDFLocation = path.join(directory,title)
-			fs.copyFileSync(originalPDFLocation,finalPDFLocation)
-			child_process.exec(`start ${finalPDFLocation}`)
-		}
-	})
-
+	// ipcMain.on('recompile-latex-pdf', (event, arg) => {
+		// const styleLocation = path.join(directory,'!cdomtex','style.tex')
+		// const success = compileLatexPDF(directory, styleLocation)
+		// if (success) {
+			// const originalPDFLocation = path.join(directory,'!cdomtex','style.pdf')
+			// const rawTitle = sanitizeTitle(loadMetadata(directory).title)
+			// const title = rawTitle.replace(/ /g,'_').toLowerCase() + '.pdf'
+			// const finalPDFLocation = path.join(directory,title)
+			// fs.copyFileSync(originalPDFLocation,finalPDFLocation)
+			// child_process.exec(`start ${finalPDFLocation}`)
+		// }
+	// })
+// 
 	ipcMain.on('update-footnote', (event, arg) => {
 		const { code, text } = arg
 		saveFootnote(directory,code,text)

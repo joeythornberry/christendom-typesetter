@@ -32,10 +32,10 @@ function onLoad(getFootnotes,getParagraphs) {
 		ipcRenderer.send('compile-latex-pdf','hello')
 	});
 
-	const recompileLatexButton = document.getElementById('recompile-latex-button');
-	recompileLatexButton.addEventListener('click', () => {
-		ipcRenderer.send('recompile-latex-pdf','hello')
-	});
+	// const recompileLatexButton = document.getElementById('recompile-latex-button');
+	// recompileLatexButton.addEventListener('click', () => {
+		// ipcRenderer.send('recompile-latex-pdf','hello')
+	// });
 
 	const footnotesParagraphsButton = document.getElementById('footnotes-paragraphs-button')
 
