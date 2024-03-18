@@ -32,6 +32,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
 ipcRenderer.on('theme', (event, arg) => {
 	setTheme(arg.theme)
+	const themeToggle = document.getElementById('theme')
+	themeToggle.checked = (arg.theme === "dark")
 })
 
 ipcRenderer.on('paper', (event, arg) => {
