@@ -6,10 +6,7 @@ const { ipcRenderer } = require('electron');
 
 function displayFootnotes(footnotes, paperContainer) {
 	const footnotesContainer = document.getElementById('footnotes-container');
-	if (footnotesContainer === null) {
-		console.log('footnotesContainer is null');
-		return
-	}
+	if (!footnotesContainer) return
 	footnotesContainer.innerHTML = 'Footnotes will appear here.';
         const footnoteElements = createFootnoteElements(footnotes)
 	const footnoteLocations = getFootnoteLocations(paperContainer);

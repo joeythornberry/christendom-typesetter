@@ -62,11 +62,12 @@ ipcRenderer.on('paper', (event, arg) => {
 
 	displayMetadata(arg.metadata);
 
-	displayFootnotes(footnotes, paperContainer);
 
 	const paragraphsContainer = document.getElementById('paragraphs-container');
 	if (paragraphsContainer !== null) {
 		displayParagraphs(paragraphs, paragraphsContainer);
+	} else {
+		displayFootnotes(footnotes, paperContainer);
 	}
 
 	if (needLoad) {
@@ -81,7 +82,10 @@ ipcRenderer.on('paper', (event, arg) => {
 })
 
 window.addEventListener('resize', () => {
-	displayFootnotes(footnotes, paperContainer);
+	footnotesContainer = document.getElementById('footnotes-container');
+	if (footnotesContainer == null) {
+		displayFootnotes(footnotes, paperContainer);
+	}
 })
 
 document.addEventListener('DOMContentLoaded', () => {
