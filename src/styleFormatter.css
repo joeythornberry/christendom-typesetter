@@ -135,7 +135,7 @@ body {
 	background: var(--edit-color);
 }
 
-[contenteditable] {
+[contenteditable]:focus {
 	outline: none;
 }
 
