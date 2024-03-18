@@ -36,6 +36,24 @@ ipcRenderer.on('theme', (event, arg) => {
 	themeToggle.checked = (arg.theme === "dark")
 })
 
+function deNewline(input) {
+	let counter = 0
+	let output = ""
+	while (counter < input.length) {
+		if (input[counter] == "\r") {
+			counter += 1
+		} else if (input[counter] == "\n") {
+			output += " "
+			counter += 1
+		} else {
+			output += input[counter]
+			counter += 1
+		}
+	}
+	return output
+}
+
+
 ipcRenderer.on('paper', (event, arg) => {
 	paperContainer = document.getElementById('paper-container');
 	paperContainer.innerHTML = arg.text;
@@ -56,8 +74,8 @@ ipcRenderer.on('paper', (event, arg) => {
 		needLoad = false
 	}
 	
-	const split = arg.text.split(" ")
-	const wordCount = split.length
+	const split = deNewline(arg.text).split(" ")
+	const wordCount = split.length - paragraphs.length
 	const wordCountElement = document.getElementById('word-count')
 	wordCountElement.innerHTML = `Word Count: ${wordCount}`
 })
