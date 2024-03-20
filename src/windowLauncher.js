@@ -38,7 +38,7 @@ function launcher() {
 		launcherWindow.webContents.send('directory-picked', { directory: result[0] })
 	})
 
-	launcherWindow.webContents.send('theme', {theme: loadTheme()}) 
+	launcherWindow.webContents.send('theme', {theme: "light"}) 
 }
 
 exports.launcher = launcher

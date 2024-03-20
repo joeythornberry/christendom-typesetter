@@ -1,8 +1,9 @@
 const { themeLocation } = require('./locations')
 const fs = require('fs')
+const path = require('path')
 
-function saveTheme(theme) {
-	fs.writeFileSync(themeLocation, theme)
+function saveTheme(directory,theme) {
+	fs.writeFileSync(path.join(directory,themeLocation), theme)
 }
 
 exports.saveTheme = saveTheme

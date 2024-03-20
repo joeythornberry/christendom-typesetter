@@ -1,8 +1,8 @@
 {
-  "name": "cdomtex",
-  "productName": "cdomtex",
+  "name": "ChristendomTypesetter",
+  "productName": "Typesetter",
   "version": "1.0.0",
-  "description": "My Electron application description",
+  "description": "A streamlined typesetter that turns plain text into fully-formatted academic papers.",
   "main": "src/index.js",
   "scripts": {
     "start": "electron-forge start",
@@ -13,7 +13,7 @@
   },
   "keywords": [],
   "author": {
-    "name": "joeythornberry",
+    "name": "Christendom College Coding Club",
     "email": "lewis.thornberry@christendom.edu"
   },
   "license": "MIT",

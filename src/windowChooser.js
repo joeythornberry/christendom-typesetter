@@ -27,7 +27,7 @@ function chooser(index, directory) {
 	chooseParagraphWindow.loadFile(path.join(__dirname,'htmlChooser.html'))
 	chooseParagraphWindow.webContents.send('potential-paragraphs',{ paragraphs: getPotentialParagraphs(directory), index: index })
 
-	chooseParagraphWindow.webContents.send('theme', {theme: loadTheme()}) 
+	chooseParagraphWindow.webContents.send('theme', {theme: loadTheme(directory)}) 
 
 	return chooseParagraphWindow
 

@@ -2,6 +2,7 @@ const { dialog, app } = require('electron')
 const { argv } = require('process')
 const { launcher } = require('./windowLauncher.js')
 const { formatter } = require('./windowFormatter.js')
+const { createClientFilesystem } = require('./createClientFilesystem')
 
 function start(args) {
 	if (args.length === 0) {
@@ -23,6 +24,7 @@ function start(args) {
 }
 
 app.whenReady().then(() => {
+
 	if (process.env.NODE_ENV === 'development') {
 		// console.log('Running in development mode')
 	} else {
@@ -31,10 +33,12 @@ app.whenReady().then(() => {
 
 	let args = []
 
-	if (argv[1].includes('index.js')) {
-		args = argv.slice(2)
-	} else {
-		args = argv.slice(1)
+	if (argv.length > 1) {
+		if (argv[1].includes('index.js')) {
+			args = argv.slice(2)
+		} else {
+			args = argv.slice(1)
+		}
 	}
 
 	start(args)

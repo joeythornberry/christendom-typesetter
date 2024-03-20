@@ -25,6 +25,7 @@ const { saveTheme } = require('./saveTheme.js')
 
 function formatter(directory) {
 
+	createClientFilesystem(directory)
 	contextMenu({
 		showSearchWithGoogle: false,
 		showSaveImageAs: false,
@@ -53,8 +54,6 @@ function formatter(directory) {
 	function sendPaper() {
 		win.webContents.send('paper', loadPaper(directory))
 	}
-
-	createClientFilesystem(directory)
 
 	sendPaper()
 	const fm = new FileManager(directory,sendPaper,100)
@@ -136,11 +135,11 @@ function formatter(directory) {
 	})
 
 	ipcMain.on('theme', (event,arg) => {
-		saveTheme(arg.theme)
-		win.webContents.send('theme', {theme: loadTheme()}) 
+		saveTheme(directory,arg.theme)
+		win.webContents.send('theme', {theme: loadTheme(directory)}) 
 	})
 
-	win.webContents.send('theme', {theme: loadTheme()}) 
+	win.webContents.send('theme', {theme: loadTheme(directory)}) 
 
 }
 

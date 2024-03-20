@@ -46,8 +46,8 @@ function createClientFilesystem(directory) {
 		}
 	}
 
-	if(!fs.existsSync(themeLocation)) {
-		fs.writeFileSync(themeLocation,"light")
+	if(!fs.existsSync(path.join(directory,themeLocation))) {
+		fs.writeFileSync(path.join(directory,themeLocation),"light")
 	}
 }
 	

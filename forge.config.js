@@ -1,5 +1,6 @@
 module.exports = {
   packagerConfig: {
+    icon: "icon_light",
     asar: true,
     ignore: ['^/miktex/$'],
   },
