@@ -41,6 +41,13 @@ body {
 	margin-bottom: 10px;
 }
 
+.hidden {
+	display: none;
+}
+
+#editor-container {
+}
+
 #paper-container {
 	line-height: 1.5;
 	overflow-y: hidden;

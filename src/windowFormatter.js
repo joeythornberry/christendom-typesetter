@@ -22,6 +22,8 @@ const { chooser } = require('./windowChooser.js')
 const contextMenu = require('electron-context-menu')
 const { loadTheme } = require('./loadTheme.js')
 const { saveTheme } = require('./saveTheme.js')
+const { loadEdit } = require('./loadEdit.js')
+const { saveEdit } = require('./saveEdit.js')
 
 function formatter(directory) {
 
@@ -138,8 +140,14 @@ function formatter(directory) {
 		saveTheme(directory,arg.theme)
 		win.webContents.send('theme', {theme: loadTheme(directory)}) 
 	})
-
 	win.webContents.send('theme', {theme: loadTheme(directory)}) 
+
+	ipcMain.on('edit', (event,arg) => {
+		saveEdit(directory,arg.edit)
+		win.webContents.send('edit', {edit: loadEdit(directory)}) 
+	})
+	win.webContents.send('edit', {edit: loadEdit(directory)}) 
+
 
 }
 

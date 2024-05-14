@@ -33,3 +33,9 @@ const themeLocation = path.join(...themeLocationPath)
 
 exports.themeLocationPath = themeLocationPath
 exports.themeLocation = themeLocation
+
+const editLocationPath = [clientDirectory, 'edit.txt']
+const editLocation = path.join(...editLocationPath)
+
+exports.editLocationPath = editLocationPath
+exports.editLocation = editLocation

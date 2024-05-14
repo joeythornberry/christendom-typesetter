@@ -3,8 +3,8 @@ const { onLoad } = require('./onLoad.js')
 const { displayFootnotes } = require('./displayFootnotes.js')
 const { displayParagraphs } = require('./displayParagraphs.js')
 const { displayMetadata } = require('./displayMetadata.js');
-const { switchToParagraphs } = require('./switchToParagraphs.js');
 const { setTheme } = require('./setTheme.js')
+const { setEdit } = require('./setEdit.js')
 
 let footnotes = [];
 let paragraphs = [];
@@ -34,6 +34,12 @@ ipcRenderer.on('theme', (event, arg) => {
 	setTheme(arg.theme)
 	const themeToggle = document.getElementById('theme')
 	themeToggle.checked = (arg.theme === "dark")
+})
+
+ipcRenderer.on('edit', (event, arg) => {
+	setEdit(arg.edit)
+	const editToggle = document.getElementById('edit')
+	editToggle.checked = (arg.edit === "edit")
 })
 
 function deNewline(input) {
@@ -93,11 +99,21 @@ document.addEventListener('DOMContentLoaded', () => {
 	const themeToggle = document.getElementById('theme')
 	themeToggle.addEventListener("change", (e) => {
 		let theme;
-		if (themeToggle.checked === true) {
+		if (themeToggle.checked) {
 			theme = "dark"
 		} else {
 			theme = "light"
 		}
 		ipcRenderer.send("theme",{theme: theme})
+	})
+	const editToggle = document.getElementById('edit')
+	editToggle.addEventListener("change", (e) => {
+		let edit;
+		if (editToggle.checked) {
+			edit = "edit"
+		} else {
+			edit = "preview"
+		}
+		ipcRenderer.send("edit",{edit: edit})
 	})
 });

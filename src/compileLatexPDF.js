@@ -14,9 +14,9 @@ function compileLatexPDF(
 
 	const currentDirectory = process.cwd()
 	process.chdir(targetDirectory)
-	let compileBatch = path.join(process.resourcesPath, 'compile.bat')
+	let compileBatch = process.resourcesPath + '\\compile.bat'
 	if(process.env.NODE_ENV === 'development') {
-		compileBatch = path.join(__dirname, 'resources', 'compile.bat')
+		// compileBatch = path.join(__dirname, 'resources', 'compile.bat"')
 	}
 	try {
 		child_process.execSync(compileBatch, () => {})

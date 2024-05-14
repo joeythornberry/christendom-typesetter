@@ -1,5 +1,5 @@
 const { metadataTypes } = require('./constants.js')
-const { themeLocation, footnotesLocationPath, metadataLocationPath, metadataLocation, clientDirectory, paragraphsLocation} = require('./locations.js')
+const { themeLocation, footnotesLocationPath, metadataLocationPath, metadataLocation, clientDirectory, paragraphsLocation, editLocation} = require('./locations.js')
 const path = require('path');
 const fs = require('fs');
 
@@ -48,6 +48,9 @@ function createClientFilesystem(directory) {
 
 	if(!fs.existsSync(path.join(directory,themeLocation))) {
 		fs.writeFileSync(path.join(directory,themeLocation),"light")
+	}
+	if(!fs.existsSync(path.join(directory,editLocation))) {
+		fs.writeFileSync(path.join(directory,editLocation),"edit")
 	}
 }
 	
